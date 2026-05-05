@@ -28,16 +28,16 @@
       "inputs": {
         "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
         "method": "get",
-        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(triggerBody()?['id'])}",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
         "headers": {
-          "x-ms-documentdb-raw-partitionkey": "[\"@{triggerBody()?['caseID']}\"]"
+          "x-ms-documentdb-raw-partitionkey": "[\"@{json(triggerBody())?['caseID']}\"]"
         }
       }
     },
     "Compose_updated": {
       "type": "Compose",
       "runAfter": { "Get_doc": [ "Succeeded" ] },
-      "inputs": "@union(body('Get_doc'), json(concat('{\"title\":\"', coalesce(triggerBody()?['title'], body('Get_doc')?['title']), '\",\"updatedAt\":\"', utcNow(), '\"}')))"
+      "inputs": "@union(body('Get_doc'), json(concat('{\"title\":\"', coalesce(json(triggerBody())?['title'], body('Get_doc')?['title']), '\",\"updatedAt\":\"', utcNow(), '\"}')))"
     },
     "Replace_doc": {
       "type": "ApiConnection",
@@ -45,9 +45,9 @@
       "inputs": {
         "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
         "method": "put",
-        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(triggerBody()?['id'])}",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
         "headers": {
-          "x-ms-documentdb-raw-partitionkey": "[\"@{triggerBody()?['caseID']}\"]"
+          "x-ms-documentdb-raw-partitionkey": "[\"@{json(triggerBody())?['caseID']}\"]"
         },
         "body": "@outputs('Compose_updated')"
       }
@@ -60,13 +60,13 @@
         "method": "post",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
         "headers": {
-          "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}\"]"
+          "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]"
         },
         "body": {
           "id":     "@{guid()}",
           "action": "UPDATE",
-          "user":   "@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}",
-          "res":    "@triggerBody()?['id']",
+          "user":   "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
+          "res":    "@json(triggerBody())?['id']",
           "ip":     "—",
           "ts":     "@utcNow()"
         }

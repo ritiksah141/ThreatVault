@@ -1,36 +1,24 @@
 #!/usr/bin/env bash
-# 09 — Automate GitHub Secrets setup using the 'gh' CLI.
-# This sets up AZURE_CREDENTIALS and STORAGE_ACCOUNT_NAME.
+# 08 — Push the secrets the GitHub Actions workflow needs to deploy the
+# frontend to the storage account's static-website ($web) container.
+# Sets:  AZURE_STORAGE_ACCOUNT  (e.g. sttv5fb957)
+#        AZURE_STORAGE_KEY      (primary access key)
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/parameters.sh"
 ensure_logged_in
 
-# Check for gh CLI
-if ! command -v gh &> /dev/null; then
-    fail "GitHub CLI (gh) is not installed. Please install it or set secrets manually."
-fi
+command -v gh >/dev/null 2>&1 || fail "GitHub CLI (gh) not installed. Run: brew install gh"
+gh auth status >/dev/null 2>&1 || fail "Not logged into gh. Run: gh auth login"
 
-# Ensure user is logged into gh
-gh auth status >/dev/null 2>&1 || fail "Not logged into GitHub CLI. Run: gh auth login"
-
-# Load storage info
 [[ -f "$SCRIPT_DIR/.state.storage" ]] || fail "Run 01-storage.sh first"
 source "$SCRIPT_DIR/.state.storage"
 
-# 1. Create Service Principal for GitHub Actions
-banner "Generating Azure Service Principal for GitHub Actions"
-SP_NAME="ThreatVault-CI-${SUFFIX}"
-# Use --sdk-auth to get the JSON format required by azure/login.
-# We suppress output to avoid leaking credentials in logs.
-az ad sp create-for-rbac --name "$SP_NAME" --role contributor \
-  --scopes "/subscriptions/$SUB_ID/resourceGroups/$RG_NAME" \
-  --sdk-auth 2>/dev/null | gh secret set AZURE_CREDENTIALS
+banner "Setting GitHub Actions secrets for storage-static-website deploy"
+gh secret set AZURE_STORAGE_ACCOUNT --body "$STORAGE_NAME" >/dev/null
+ok "Set: AZURE_STORAGE_ACCOUNT = $STORAGE_NAME"
 
-ok "Set secret: AZURE_CREDENTIALS"
+printf '%s' "$STORAGE_KEY" | gh secret set AZURE_STORAGE_KEY >/dev/null
+ok "Set: AZURE_STORAGE_KEY (hidden)"
 
-gh secret set STORAGE_ACCOUNT_NAME --body "$STORAGE_NAME"
-ok "Set secret: STORAGE_ACCOUNT_NAME"
-
-banner "GitHub Secrets setup complete!"
-echo "You can now push your code to trigger the deployment."
+banner "GitHub Secrets ready — push to main to trigger the deploy."

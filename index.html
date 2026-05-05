@@ -138,7 +138,7 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
         </div>
         <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
           <p class="text-[10px] font-black uppercase tracking-wider text-cyan-300 mb-1">Security</p>
-          <p class="text-sm text-slate-300">MFA, RBAC, Azure Key Vault, SAS tokens</p>
+          <p class="text-sm text-slate-300">RBAC, Azure Key Vault, SAS tokens</p>
         </div>
         <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
           <p class="text-[10px] font-black uppercase tracking-wider text-cyan-300 mb-1">Audit</p>
@@ -180,7 +180,6 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
         <div class="space-y-3">
           <input id="l-email" type="email" placeholder="analyst@threatvault.com" class="tv-input" autocomplete="email"/>
           <input id="l-pass" type="password" placeholder="Password" class="tv-input" autocomplete="current-password"/>
-          <input id="l-mfa" type="text" placeholder="MFA Code (optional — leave blank if not set up)" maxlength="6" inputmode="numeric" class="tv-input"/>
         </div>
         <button onclick="doLogin()" class="mt-4 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
           <span id="l-txt">Authenticate</span>
@@ -209,7 +208,7 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
 
       <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 text-center">
         <p class="text-xs text-gray-400">
-          Secured by Azure RBAC, MFA, Key Vault &amp; SAS tokens
+          Secured by Azure RBAC, Key Vault &amp; SAS tokens
         </p>
       </div>
     </div>
@@ -548,10 +547,6 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
               </h3>
               <div class="space-y-3 text-sm">
                 <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
-                  <span class="font-bold text-gray-500 dark:text-gray-400">MFA Authentication</span>
-                  <span class="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-black">Enforced</span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
                   <span class="font-bold text-gray-500 dark:text-gray-400">Identity Provider</span>
                   <span id="cfg-idp" class="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-black">Local Auth</span>
                 </div>
@@ -581,6 +576,16 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
                 <input id="cp-new2" type="password" placeholder="Confirm New Password" class="tv-input"/>
                 <button onclick="changePassword()" class="w-full py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90">Update Password</button>
               </div>
+            </div>
+
+            <div class="rounded-2xl bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 p-6">
+              <h3 class="font-black text-red-600 dark:text-red-400 mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined">warning</span> Delete Account
+              </h3>
+              <p class="text-xs text-gray-500 dark:text-slate-400 mb-4">
+                Permanently removes your local account and signs you out. This action cannot be undone.
+              </p>
+              <button onclick="deleteAccount()" class="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm">Delete My Account</button>
             </div>
 
           </div>
@@ -755,7 +760,6 @@ function setAuthTab(tab) {
 async function doLogin() {
   const email = (document.getElementById('l-email').value || '').trim().toLowerCase();
   const pass  = document.getElementById('l-pass').value || '';
-  const mfa   = (document.getElementById('l-mfa').value || '').trim();
 
   if (!email || !email.includes('@')) return toast('⚠️', 'Enter a valid email');
   if (pass.length < 1)              return toast('⚠️', 'Enter your password');
@@ -770,7 +774,7 @@ async function doLogin() {
       const res  = await fetch(`${AUTH_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email, password: pass, mfaToken: mfa }),
+        body: JSON.stringify({ username: email, password: pass }),
         mode: 'cors', cache: 'no-store', credentials: 'omit'
       });
       const data = await res.json();
@@ -1556,6 +1560,23 @@ async function changePassword() {
 
   ['cp-cur','cp-new','cp-new2'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
   toast('✅', 'Password changed');
+}
+
+async function deleteAccount() {
+  if (!user?.email) return;
+  if (!confirm(`Permanently delete account ${user.email}? This cannot be undone.`)) return;
+  const email = user.email;
+
+  if (AUTH_URL) {
+    try { await apiCall(`${AUTH_URL}/auth/delete-account`, 'POST', { email }); }
+    catch (_) { toast('⚠️', 'Auth service unreachable — removing locally'); }
+  }
+
+  const users = getLocalUsers().filter(u => u.email !== email);
+  saveLocalUsers(users);
+  try { localStorage.removeItem('tv_token'); localStorage.removeItem('tv_user'); } catch (_) {}
+  toast('🗑️', 'Account deleted');
+  setTimeout(() => doLogout(), 600);
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────

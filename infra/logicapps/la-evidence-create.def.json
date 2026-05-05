@@ -43,14 +43,14 @@
           "type": "Object",
           "value": {
             "id":         "@variables('evid')",
-            "title":      "@triggerBody()?['title']",
-            "caseID":     "@triggerBody()?['caseID']",
-            "cvss":       "@coalesce(triggerBody()?['cvss'], 0)",
-            "ext":        "@coalesce(triggerBody()?['ext'], 'png')",
-            "fileName":   "@coalesce(triggerBody()?['fileName'], '')",
-            "fileSize":   "@coalesce(triggerBody()?['fileSize'], 0)",
-            "sha256":     "@coalesce(triggerBody()?['sha256'], '')",
-            "uploadedBy": "@coalesce(triggerBody()?['user'], 'analyst@threatvault.com')",
+            "title":      "@json(triggerBody())?['title']",
+            "caseID":     "@json(triggerBody())?['caseID']",
+            "cvss":       "@coalesce(json(triggerBody())?['cvss'], 0)",
+            "ext":        "@coalesce(json(triggerBody())?['ext'], 'png')",
+            "fileName":   "@coalesce(json(triggerBody())?['fileName'], '')",
+            "fileSize":   "@coalesce(json(triggerBody())?['fileSize'], 0)",
+            "sha256":     "@coalesce(json(triggerBody())?['sha256'], '')",
+            "uploadedBy": "@coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')",
             "uploadedAt": "@utcNow()",
             "blobPath":   "@{concat('evidence/', variables('evid'), '.json')}",
             "tags":       []
@@ -95,12 +95,12 @@
         "method": "post",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
         "headers": {
-          "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}\"]"
+          "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]"
         },
         "body": {
           "id":     "@{guid()}",
           "action": "CREATE",
-          "user":   "@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}",
+          "user":   "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
           "res":    "@{variables('evid')}",
           "ip":     "@{coalesce(triggerOutputs()?['headers']?['X-Forwarded-For'], '—')}",
           "ts":     "@utcNow()"

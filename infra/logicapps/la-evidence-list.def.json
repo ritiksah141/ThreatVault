@@ -2,36 +2,51 @@
   "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "$connections": { "type": "Object", "defaultValue": {} }
+    "$connections": {
+      "type": "Object",
+      "defaultValue": {}
+    }
   },
   "triggers": {
     "manual": {
       "type": "Request",
       "kind": "Http",
-      "inputs": { "method": "POST", "schema": {} }
+      "inputs": {
+        "method": "POST",
+        "schema": {}
+      }
     }
   },
   "actions": {
     "List_evidence": {
       "type": "ApiConnection",
       "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
         "method": "get",
-        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs",
-        "queries": { "x-ms-max-item-count": 200 }
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs"
       }
     },
     "Response": {
       "type": "Response",
       "kind": "Http",
-      "runAfter": { "List_evidence": [ "Succeeded" ] },
+      "runAfter": {
+        "List_evidence": [
+          "Succeeded"
+        ]
+      },
       "inputs": {
         "statusCode": 200,
         "headers": {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*"
         },
-        "body": { "items": "@coalesce(body('List_evidence')?['Documents'], json('[]'))" }
+        "body": {
+          "items": "@coalesce(body('List_evidence')?['Documents'], json('[]'))"
+        }
       }
     }
   },

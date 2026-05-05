@@ -36,10 +36,10 @@
           "type": "Object",
           "value": {
             "id":       "@variables('caseId')",
-            "title":    "@triggerBody()?['title']",
+            "title":    "@json(triggerBody())?['title']",
             "status":   "Open",
-            "priority": "@coalesce(triggerBody()?['priority'], 'Medium')",
-            "analyst":  "@coalesce(triggerBody()?['analyst'], 'Analyst')",
+            "priority": "@coalesce(json(triggerBody())?['priority'], 'Medium')",
+            "analyst":  "@coalesce(json(triggerBody())?['analyst'], 'Analyst')",
             "count":    0,
             "created":  "@utcNow()",
             "updated":  "@utcNow()"
@@ -65,11 +65,11 @@
         "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
         "method": "post",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
-        "headers": { "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}\"]" },
+        "headers": { "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]" },
         "body": {
           "id":     "@{guid()}",
           "action": "CREATE",
-          "user":   "@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}",
+          "user":   "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
           "res":    "@variables('caseId')",
           "ip":     "—",
           "ts":     "@utcNow()"

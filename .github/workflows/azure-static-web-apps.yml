@@ -15,15 +15,14 @@ jobs:
         uses: azure/CLI@v2
         with:
           inlineScript: |
-            # Deploy using the Storage Key directly
             az storage blob upload-batch \
-              --account-name sttv5fb957 \
-              --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+              --account-name "${{ secrets.AZURE_STORAGE_ACCOUNT }}" \
+              --account-key  "${{ secrets.AZURE_STORAGE_KEY }}" \
               -d '$web' -s . \
               --pattern "index.html" --overwrite true
-            
+
             az storage blob upload-batch \
-              --account-name sttv5fb957 \
-              --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+              --account-name "${{ secrets.AZURE_STORAGE_ACCOUNT }}" \
+              --account-key  "${{ secrets.AZURE_STORAGE_KEY }}" \
               -d '$web' -s . \
               --pattern "config.js" --overwrite true
