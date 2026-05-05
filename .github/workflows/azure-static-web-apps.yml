@@ -11,25 +11,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       - name: Upload to Blob Storage
         uses: azure/CLI@v2
         with:
           inlineScript: |
-            # Upload index.html and config.js to the special '$web' container
-            # We use --overwrite true to ensure updates are applied
+            # Deploy using the Storage Key directly
             az storage blob upload-batch \
-              --account-name ${{ secrets.STORAGE_ACCOUNT_NAME }} \
-              --auth-mode key \
+              --account-name sttv5fb957 \
+              --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
               -d '$web' -s . \
               --pattern "index.html" --overwrite true
             
             az storage blob upload-batch \
-              --account-name ${{ secrets.STORAGE_ACCOUNT_NAME }} \
-              --auth-mode key \
+              --account-name sttv5fb957 \
+              --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
               -d '$web' -s . \
               --pattern "config.js" --overwrite true
