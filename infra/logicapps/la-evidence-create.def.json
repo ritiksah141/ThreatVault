@@ -1,0 +1,125 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": { "type": "Object", "defaultValue": {} }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "title":   { "type": "string" },
+            "caseID":  { "type": "string" },
+            "cvss":    { "type": "number" },
+            "ext":     { "type": "string" },
+            "fileName":{ "type": "string" },
+            "fileSize":{ "type": "number" },
+            "sha256":  { "type": "string" },
+            "user":    { "type": "string" }
+          },
+          "required": ["title","caseID"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Init_id": {
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [ { "name": "evid", "type": "String", "value": "@{concat('EVD-', formatDateTime(utcNow(),'yyyy'), '-', substring(replace(guid(),'-',''),0,8))}" } ]
+      }
+    },
+    "Init_doc": {
+      "type": "InitializeVariable",
+      "runAfter": { "Init_id": [ "Succeeded" ] },
+      "inputs": {
+        "variables": [ {
+          "name": "doc",
+          "type": "Object",
+          "value": {
+            "id":         "@variables('evid')",
+            "title":      "@triggerBody()?['title']",
+            "caseID":     "@triggerBody()?['caseID']",
+            "cvss":       "@coalesce(triggerBody()?['cvss'], 0)",
+            "ext":        "@coalesce(triggerBody()?['ext'], 'png')",
+            "fileName":   "@coalesce(triggerBody()?['fileName'], '')",
+            "fileSize":   "@coalesce(triggerBody()?['fileSize'], 0)",
+            "sha256":     "@coalesce(triggerBody()?['sha256'], '')",
+            "uploadedBy": "@coalesce(triggerBody()?['user'], 'analyst@threatvault.com')",
+            "uploadedAt": "@utcNow()",
+            "blobPath":   "@{concat('evidence/', variables('evid'), '.json')}",
+            "tags":       []
+          }
+        } ]
+      }
+    },
+    "Write_blob_manifest": {
+      "type": "ApiConnection",
+      "runAfter": { "Init_doc": [ "Succeeded" ] },
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['azureblob']['connectionId']" } },
+        "method": "post",
+        "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files",
+        "queries": {
+          "folderPath": "/evidence",
+          "name": "@{concat(variables('evid'), '.json')}",
+          "queryParametersSingleEncoded": true
+        },
+        "headers": { "Content-Type": "application/json", "ReadFileMetadataFromServer": true },
+        "body": "@variables('doc')"
+      }
+    },
+    "Insert_cosmos": {
+      "type": "ApiConnection",
+      "runAfter": { "Write_blob_manifest": [ "Succeeded", "Failed", "Skipped" ] },
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "method": "post",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs",
+        "headers": {
+          "x-ms-documentdb-raw-partitionkey": "[\"@{variables('doc')['caseID']}\"]"
+        },
+        "body": "@variables('doc')"
+      }
+    },
+    "Audit_create": {
+      "type": "ApiConnection",
+      "runAfter": { "Insert_cosmos": [ "Succeeded" ] },
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "method": "post",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
+        "headers": {
+          "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}\"]"
+        },
+        "body": {
+          "id":     "@{guid()}",
+          "action": "CREATE",
+          "user":   "@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}",
+          "res":    "@{variables('evid')}",
+          "ip":     "@{coalesce(triggerOutputs()?['headers']?['X-Forwarded-For'], '—')}",
+          "ts":     "@utcNow()"
+        }
+      }
+    },
+    "Response": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": { "Audit_create": [ "Succeeded", "Failed" ] },
+      "inputs": {
+        "statusCode": 201,
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": { "evidence": "@variables('doc')" }
+      }
+    }
+  },
+  "outputs": {}
+}

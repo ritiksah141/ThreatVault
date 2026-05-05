@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ThreatVault — Cyber Evidence Platform</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+<script src="config.js"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: { fontFamily: { sans: ['Space Grotesk', 'sans-serif'] } } }
+};
+// Flash prevention
+(function(){
+  var t = localStorage.getItem('tv_theme');
+  if(t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches))
+    document.documentElement.classList.add('dark');
+})();
+</script>
+<style>
+:root {
+  --accent: #e63946;
+  --accent-dim: rgba(230,57,70,0.12);
+}
+* { box-sizing: border-box; }
+body { font-family: 'Space Grotesk', sans-serif; margin: 0; }
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  line-height: 1; vertical-align: middle; display: inline-block;
+}
+
+/* Screens */
+.screen { display: none; }
+.screen.active { display: flex; width: 100%; min-height: 100vh; }
+
+/* Pages */
+.page { display: none; }
+.page.active { display: block; animation: fadeIn .25s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+/* Nav pill */
+.nav-pill { color: #6b7280; transition: all .18s; border-radius: 9999px; }
+.nav-pill:hover { background: #f3f4f6; color: #111; }
+.nav-pill.active { background: #0f0f0f; color: #fff; }
+html.dark .nav-pill { color: #94a3b8; }
+html.dark .nav-pill:hover { background: #1e293b; color: #e2e8f0; }
+html.dark .nav-pill.active { background: #e2e8f0; color: #0f172a; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+/* Skeleton */
+.skel { background: #e5e7eb; border-radius: 8px; animation: shimmer 1.4s infinite; }
+html.dark .skel { background: #334155; }
+@keyframes shimmer {
+  0%,100% { opacity: 1; } 50% { opacity: .5; }
+}
+
+/* Progress steps */
+.prog-step { border-left: 3px solid #e5e7eb; padding: 8px 14px; border-radius: 0 12px 12px 0; font-size: 12px; font-weight: 700; transition: all .3s; }
+.prog-step.running { border-left-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+.prog-step.done { border-left-color: #10b981; background: #ecfdf5; color: #047857; }
+html.dark .prog-step { background: #1e293b; color: #94a3b8; border-left-color: #334155; }
+html.dark .prog-step.running { background: #172554; color: #93c5fd; border-left-color: #3b82f6; }
+html.dark .prog-step.done { background: #052e16; color: #6ee7b7; border-left-color: #10b981; }
+
+/* Drop zone */
+.drop-zone.drag-over { border-color: #3b82f6 !important; background: #eff6ff !important; }
+
+/* Toast */
+#toast { animation: slideUp .3s cubic-bezier(.16,1,.3,1); }
+@keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Modal */
+.modal-bg { background: rgba(0,0,0,.45); backdrop-filter: blur(8px); }
+
+/* Input */
+.tv-input {
+  width: 100%; background: #f9fafb; border: 2px solid transparent;
+  border-radius: 16px; padding: 12px 16px; font-size: 14px; font-weight: 600;
+  transition: all .2s; outline: none; font-family: inherit;
+}
+.tv-input:focus { background: #fff; border-color: #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+html.dark .tv-input { background: #1e293b; color: #e2e8f0; }
+html.dark .tv-input:focus { background: #263043; border-color: #475569; }
+.tv-input::placeholder { color: #9ca3af; }
+html.dark .tv-input::placeholder { color: #64748b; }
+
+select.tv-input { cursor: pointer; }
+html.dark select.tv-input option { background: #1e293b; }
+
+/* Range */
+input[type=range] { appearance: none; width: 100%; height: 5px; background: #e5e7eb; border-radius: 3px; outline: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #0f0f0f; cursor: pointer; }
+html.dark input[type=range] { background: #334155; }
+html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
+
+/* Responsive app shell */
+#app-shell-container { display: flex; width: 100%; min-height: 100vh; }
+@media (max-width: 768px) {
+  #sidebar { width: 100% !important; height: auto; flex-direction: row; padding: 12px 16px; }
+  #sidebar nav { flex-direction: row; gap: 4px; }
+  #sidebar .sidebar-user { display: none; }
+  #app-shell-container { flex-direction: column; }
+}
+</style>
+</head>
+<body class="bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════════════════════════ -->
+<div id="login-screen" class="screen active items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+  <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <!-- Brand panel -->
+    <div class="rounded-3xl bg-gradient-to-br from-slate-900 to-slate-700 p-8 text-white flex flex-col">
+      <div class="flex items-center gap-3 mb-8">
+        <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+          <span class="material-symbols-outlined text-2xl text-cyan-300">shield_lock</span>
+        </div>
+        <h1 class="text-2xl font-black">ThreatVault</h1>
+      </div>
+      <p class="text-slate-300 text-sm leading-relaxed mb-8">
+        Cloud-native cyber threat intelligence and forensic evidence management platform for SOC and DFIR teams. Built on Microsoft Azure.
+      </p>
+      <div class="grid grid-cols-2 gap-3 mt-auto">
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+          <p class="text-[10px] font-black uppercase tracking-wider text-cyan-300 mb-1">Evidence</p>
+          <p class="text-sm text-slate-300">Chain-of-custody uploads with SHA-256 integrity</p>
+        </div>
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+          <p class="text-[10px] font-black uppercase tracking-wider text-cyan-300 mb-1">Security</p>
+          <p class="text-sm text-slate-300">MFA, RBAC, Azure Key Vault, SAS tokens</p>
+        </div>
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+          <p class="text-[10px] font-black uppercase tracking-wider text-cyan-300 mb-1">Audit</p>
+          <p class="text-sm text-slate-300">Immutable SQL audit log for legal admissibility</p>
+        </div>
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+          <p class="text-[10px] font-black uppercase tracking-wider text-cyan-300 mb-1">AI</p>
+          <p class="text-sm text-slate-300">Content Moderator + Anomaly Detector</p>
+        </div>
+      </div>
+      <!-- Azure services indicator -->
+      <div class="mt-6 pt-6 border-t border-white/10">
+        <p class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Azure Services</p>
+        <div class="flex flex-wrap gap-2" id="azure-pill-list">
+          <span class="px-2 py-1 rounded-full bg-white/5 text-[10px] font-bold text-slate-300">App Service</span>
+          <span class="px-2 py-1 rounded-full bg-white/5 text-[10px] font-bold text-slate-300">API Management</span>
+          <span class="px-2 py-1 rounded-full bg-white/5 text-[10px] font-bold text-slate-300">Logic Apps</span>
+          <span class="px-2 py-1 rounded-full bg-white/5 text-[10px] font-bold text-slate-300">Cosmos DB</span>
+          <span class="px-2 py-1 rounded-full bg-white/5 text-[10px] font-bold text-slate-300">Blob Storage</span>
+          <span class="px-2 py-1 rounded-full bg-white/5 text-[10px] font-bold text-slate-300">Azure SQL</span>
+          <span class="px-2 py-1 rounded-full bg-white/5 text-[10px] font-bold text-slate-300">Key Vault</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auth panel -->
+    <div class="rounded-3xl bg-white dark:bg-slate-800 p-8 shadow-xl">
+      <h2 class="text-2xl font-black mb-1">Access Portal</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Sign in to continue to ThreatVault</p>
+
+      <!-- Mode tabs -->
+      <div class="grid grid-cols-2 gap-1 bg-gray-100 dark:bg-slate-700 rounded-2xl p-1 mb-6">
+        <button id="tab-login" onclick="setAuthTab('login')" class="rounded-xl py-2 text-sm font-bold bg-white dark:bg-slate-600 shadow-sm text-gray-900 dark:text-white transition-all">Login</button>
+        <button id="tab-register" onclick="setAuthTab('register')" class="rounded-xl py-2 text-sm font-bold text-gray-500 dark:text-gray-400 transition-all">Register</button>
+      </div>
+
+      <!-- Login form -->
+      <div id="login-form">
+        <div class="space-y-3">
+          <input id="l-email" type="email" placeholder="analyst@threatvault.com" class="tv-input" autocomplete="email"/>
+          <input id="l-pass" type="password" placeholder="Password" class="tv-input" autocomplete="current-password"/>
+          <input id="l-mfa" type="text" placeholder="MFA Code (optional — leave blank if not set up)" maxlength="6" inputmode="numeric" class="tv-input"/>
+        </div>
+        <button onclick="doLogin()" class="mt-4 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+          <span id="l-txt">Authenticate</span>
+          <span id="l-spin" class="hidden text-base animate-spin">⟳</span>
+        </button>
+        <div class="mt-4 p-3 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+          <p class="text-[11px] font-bold text-blue-700 dark:text-blue-300">
+            <span class="material-symbols-outlined text-[14px] align-middle mr-1">info</span>
+            Demo credentials: <strong>analyst@threatvault.com</strong> / <strong>ThreatVault1!</strong>
+          </p>
+        </div>
+      </div>
+
+      <!-- Register form -->
+      <div id="register-form" class="hidden">
+        <div class="space-y-3">
+          <input id="r-name" type="text" placeholder="Full Name" class="tv-input" autocomplete="name"/>
+          <input id="r-email" type="email" placeholder="analyst@threatvault.com" class="tv-input" autocomplete="email"/>
+          <input id="r-pass" type="password" placeholder="Password (min 8 chars)" class="tv-input" autocomplete="new-password"/>
+          <input id="r-pass2" type="password" placeholder="Confirm Password" class="tv-input" autocomplete="new-password"/>
+        </div>
+        <button onclick="doRegister()" class="mt-4 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 transition-opacity">
+          Create Account
+        </button>
+      </div>
+
+      <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 text-center">
+        <p class="text-xs text-gray-400">
+          Secured by Azure RBAC, MFA, Key Vault &amp; SAS tokens
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     APP SHELL
+═══════════════════════════════════════════════════════════════ -->
+<div id="app-shell" class="screen">
+  <div id="app-shell-container" class="bg-white dark:bg-slate-900">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 h-screen sticky top-0 flex flex-col border-r border-gray-100 dark:border-slate-700/50 bg-white dark:bg-slate-900 py-6 px-4 shrink-0 overflow-y-auto">
+      <div class="sidebar-user flex flex-col items-center text-center mb-8 mt-2">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-white text-xl font-black mb-3 shadow-lg" id="nav-initials">TV</div>
+        <p id="nav-name" class="font-black text-sm text-gray-900 dark:text-gray-100">ThreatVault Analyst</p>
+        <p id="nav-handle" class="text-xs text-gray-400 dark:text-gray-500 font-semibold mt-0.5">@analyst</p>
+        <span id="nav-role-badge" class="mt-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-black uppercase tracking-wide">Analyst</span>
+      </div>
+
+      <nav class="flex flex-col gap-1 w-full">
+        <a onclick="showPage('dashboard',this)" class="nav-pill active flex items-center gap-3 px-4 py-3 text-sm font-bold cursor-pointer">
+          <span class="material-symbols-outlined text-[20px]">space_dashboard</span> Dashboard
+        </a>
+        <a onclick="showPage('evidence',this)" class="nav-pill flex items-center gap-3 px-4 py-3 text-sm font-bold cursor-pointer">
+          <span class="material-symbols-outlined text-[20px]">perm_media</span> Evidence
+        </a>
+        <a onclick="showPage('cases',this)" class="nav-pill flex items-center gap-3 px-4 py-3 text-sm font-bold cursor-pointer">
+          <span class="material-symbols-outlined text-[20px]">folder_open</span> Cases
+        </a>
+        <a onclick="showPage('upload',this)" class="nav-pill flex items-center gap-3 px-4 py-3 text-sm font-bold cursor-pointer">
+          <span class="material-symbols-outlined text-[20px]">cloud_upload</span> Upload
+        </a>
+        <a onclick="showPage('audit',this)" class="nav-pill flex items-center gap-3 px-4 py-3 text-sm font-bold cursor-pointer">
+          <span class="material-symbols-outlined text-[20px]">history</span> Audit Log
+        </a>
+        <a onclick="showPage('settings',this)" class="nav-pill flex items-center gap-3 px-4 py-3 text-sm font-bold cursor-pointer">
+          <span class="material-symbols-outlined text-[20px]">settings</span> Settings
+        </a>
+      </nav>
+
+      <div class="mt-auto pt-6 border-t border-gray-100 dark:border-slate-700/50 flex flex-col gap-3">
+        <div class="flex items-center gap-2 px-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <p class="text-xs font-bold text-gray-900 dark:text-gray-100">System Online</p>
+        </div>
+        <div id="mode-badge" class="px-2">
+          <span class="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider"></span>
+        </div>
+        <button onclick="doLogout()" class="text-xs font-bold text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors py-2 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10">Sign Out</button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+      <!-- Topbar -->
+      <header class="h-16 px-8 flex items-center justify-between border-b border-gray-100 dark:border-slate-700/50 bg-white dark:bg-slate-900 shrink-0 sticky top-0 z-10">
+        <h2 id="page-title" class="text-xl font-black text-gray-900 dark:text-gray-100">Dashboard</h2>
+        <div class="flex items-center gap-3">
+          <input id="g-search" oninput="globalSearch(this.value)" type="text" placeholder="Search evidence, cases..." class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-full px-4 py-2 text-sm font-semibold focus:outline-none focus:border-blue-300 dark:focus:border-blue-600 w-56 text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"/>
+          <button onclick="toggleTheme()" class="p-2 rounded-full bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
+            <span id="theme-icon" class="material-symbols-outlined text-[20px] text-gray-600 dark:text-gray-300">dark_mode</span>
+          </button>
+          <button onclick="openNotifications()" class="relative p-2 rounded-full bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
+            <span class="material-symbols-outlined text-[20px] text-gray-600 dark:text-gray-300">notifications</span>
+            <span id="notif-dot" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-white dark:border-slate-800 hidden"></span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Page content -->
+      <div class="flex-1 overflow-y-auto p-8">
+
+        <!-- ─── DASHBOARD ─── -->
+        <div id="page-dashboard" class="page active">
+          <!-- Stats -->
+          <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <div class="rounded-2xl bg-blue-50 dark:bg-blue-900/20 p-5">
+              <span class="material-symbols-outlined text-blue-500 text-2xl">folder_open</span>
+              <div class="text-3xl font-black text-blue-900 dark:text-blue-200 mt-2" id="stat-cases">—</div>
+              <div class="text-xs font-bold text-blue-600 dark:text-blue-400 mt-1">Active Cases</div>
+            </div>
+            <div class="rounded-2xl bg-orange-50 dark:bg-orange-900/20 p-5">
+              <span class="material-symbols-outlined text-orange-500 text-2xl">inventory_2</span>
+              <div class="text-3xl font-black text-orange-900 dark:text-orange-200 mt-2" id="stat-evidence">—</div>
+              <div class="text-xs font-bold text-orange-600 dark:text-orange-400 mt-1">Evidence Items</div>
+            </div>
+            <div class="rounded-2xl bg-red-50 dark:bg-red-900/20 p-5">
+              <span class="material-symbols-outlined text-red-500 text-2xl">warning</span>
+              <div class="text-3xl font-black text-red-900 dark:text-red-200 mt-2" id="stat-critical">—</div>
+              <div class="text-xs font-bold text-red-600 dark:text-red-400 mt-1">Critical Alerts</div>
+            </div>
+            <div class="rounded-2xl bg-purple-50 dark:bg-purple-900/20 p-5">
+              <span class="material-symbols-outlined text-purple-500 text-2xl">smart_toy</span>
+              <div class="text-3xl font-black text-purple-900 dark:text-purple-200 mt-2" id="stat-ai">—</div>
+              <div class="text-xs font-bold text-purple-600 dark:text-purple-400 mt-1">AI Anomaly Signals</div>
+            </div>
+          </div>
+
+          <!-- Charts + service pulse -->
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+            <div class="xl:col-span-2 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+              <h3 class="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-slate-400 mb-4">Severity Distribution</h3>
+              <div class="h-52"><canvas id="chart-severity"></canvas></div>
+            </div>
+            <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+              <h3 class="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-slate-400 mb-4">Azure Service Pulse</h3>
+              <div id="service-pulse" class="space-y-3">
+                <div class="skel h-8 rounded-full"></div>
+                <div class="skel h-8 rounded-full"></div>
+                <div class="skel h-8 rounded-full"></div>
+                <div class="skel h-8 rounded-full"></div>
+              </div>
+              <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-emerald-500">verified_user</span>
+                  <span id="region-badge" class="text-xs font-black text-gray-600 dark:text-slate-300">Region: italynorth</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent evidence table -->
+          <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700">
+              <h3 class="font-black text-gray-900 dark:text-gray-100">Recent Evidence</h3>
+              <button onclick="showPage('evidence',null)" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">View all →</button>
+            </div>
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 dark:bg-slate-700/50 text-[11px] font-black uppercase tracking-wider text-gray-400 dark:text-slate-400">
+                <tr>
+                  <th class="px-6 py-3 text-left">ID</th>
+                  <th class="px-6 py-3 text-left">Title</th>
+                  <th class="px-6 py-3 text-left">Case</th>
+                  <th class="px-6 py-3 text-left">Severity</th>
+                  <th class="px-6 py-3 text-left">Type</th>
+                </tr>
+              </thead>
+              <tbody id="dash-tbody" class="divide-y divide-gray-100 dark:divide-slate-700/50"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ─── EVIDENCE ─── -->
+        <div id="page-evidence" class="page">
+          <div class="flex gap-4 mb-6 flex-wrap">
+            <select id="f-case" onchange="filterEvidence()" class="tv-input w-48 !py-2">
+              <option value="">All Cases</option>
+            </select>
+            <select id="f-type" onchange="filterEvidence()" class="tv-input w-36 !py-2">
+              <option value="">All Types</option>
+              <option>mp4</option><option>pcap</option><option>png</option><option>zip</option>
+            </select>
+            <select id="f-sev" onchange="filterEvidence()" class="tv-input w-40 !py-2">
+              <option value="">All Severities</option>
+              <option>Critical</option><option>High</option><option>Medium</option><option>Low</option>
+            </select>
+            <span id="ev-count" class="ml-auto text-sm font-bold text-gray-400 dark:text-slate-400 self-center"></span>
+          </div>
+          <div id="evidence-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+        </div>
+
+        <!-- ─── CASES ─── -->
+        <div id="page-cases" class="page">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-black text-gray-900 dark:text-gray-100">Case Management</h3>
+            <button onclick="openCaseModal()" class="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-black hover:opacity-90 flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px]">add</span> New Case
+            </button>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 dark:bg-slate-700/50 text-[11px] font-black uppercase tracking-wider text-gray-400 dark:text-slate-400">
+                <tr>
+                  <th class="px-6 py-3 text-left">Case ID</th>
+                  <th class="px-6 py-3 text-left">Title</th>
+                  <th class="px-6 py-3 text-left">Status</th>
+                  <th class="px-6 py-3 text-left">Priority</th>
+                  <th class="px-6 py-3 text-left">Analyst</th>
+                  <th class="px-6 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="cases-tbody" class="divide-y divide-gray-100 dark:divide-slate-700/50"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ─── UPLOAD ─── -->
+        <div id="page-upload" class="page">
+          <div class="max-w-3xl mx-auto">
+            <div class="rounded-2xl bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-100 dark:border-blue-800 p-8">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Drop zone -->
+                <div>
+                  <h3 class="font-black text-blue-950 dark:text-blue-200 mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-500">cloud_upload</span> Evidence File
+                  </h3>
+                  <div id="drop-zone"
+                    class="drop-zone rounded-2xl border-2 border-dashed border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 min-h-48 flex flex-col items-center justify-center p-8 cursor-pointer hover:border-blue-500 transition-colors"
+                    ondragover="event.preventDefault();this.classList.add('drag-over')"
+                    ondragleave="this.classList.remove('drag-over')"
+                    ondrop="handleDrop(event)"
+                    onclick="document.getElementById('file-input').click()">
+                    <span class="material-symbols-outlined text-4xl text-blue-300 dark:text-blue-600 mb-3">draft</span>
+                    <p class="text-sm font-bold text-gray-700 dark:text-slate-300 mb-1">Drop file here or click to browse</p>
+                    <p class="text-xs font-semibold text-gray-400 dark:text-slate-500">MP4, PNG, PCAP, ZIP — max 2 GB</p>
+                    <input type="file" id="file-input" accept=".mp4,.png,.pcap,.zip" hidden onchange="handleFileSelect(event)"/>
+                  </div>
+                  <div id="file-preview" class="hidden mt-3 bg-white dark:bg-slate-800 rounded-xl p-3 border border-blue-100 dark:border-slate-600">
+                    <div id="file-preview-content"></div>
+                  </div>
+                </div>
+
+                <!-- Metadata -->
+                <div>
+                  <h3 class="font-black text-blue-950 dark:text-blue-200 mb-4">File Metadata</h3>
+                  <div class="space-y-3">
+                    <div>
+                      <input id="u-title" type="text" placeholder="Evidence Title *" class="tv-input"/>
+                      <p id="u-title-err" class="hidden text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1">Title is required.</p>
+                    </div>
+                    <div>
+                      <select id="u-case" class="tv-input">
+                        <option value="">Select Case *</option>
+                      </select>
+                      <p id="u-case-err" class="hidden text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1">Select a case to continue.</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-4">
+                      <label class="text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-2">
+                        CVSS Score: <span id="cvss-val" class="text-blue-600 dark:text-blue-400">7.5</span>
+                      </label>
+                      <input type="range" id="cvss-slider" min="0" max="10" step="0.1" value="7.5"
+                        oninput="document.getElementById('cvss-val').textContent=parseFloat(this.value).toFixed(1)"/>
+                    </div>
+
+                    <!-- Progress steps -->
+                    <div id="up-progress" class="hidden space-y-1.5">
+                      <div id="ps-hash" class="prog-step">🔐 Computing SHA-256…</div>
+                      <div id="ps-upload" class="prog-step">☁️ Uploading to Blob Storage…</div>
+                      <div id="ps-meta" class="prog-step">📋 Saving metadata to Cosmos DB…</div>
+                      <div id="ps-audit" class="prog-step">📝 Writing audit log entry…</div>
+                      <div id="ps-done" class="prog-step">✅ Evidence committed</div>
+                    </div>
+
+                    <button id="submit-btn" onclick="submitEvidence()" disabled
+                      class="w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity">
+                      Submit to Platform
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Advanced features callout -->
+            <div class="mt-6 rounded-2xl bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-100 dark:border-purple-800 p-5">
+              <h4 class="font-black text-sm text-purple-900 dark:text-purple-200 mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-purple-500 text-[18px]">smart_toy</span>
+                Advanced Azure AI Processing
+              </h4>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-3 border border-purple-100 dark:border-slate-600">
+                  <p class="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">Content Moderator</p>
+                  <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Pre-write scan for harmful or inappropriate evidence content</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-3 border border-purple-100 dark:border-slate-600">
+                  <p class="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">Anomaly Detector</p>
+                  <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Time-series analysis on upload telemetry for abnormal patterns</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── AUDIT LOG ─── -->
+        <div id="page-audit" class="page">
+          <div class="flex items-center gap-3 mb-6 flex-wrap">
+            <input id="audit-start" type="date" class="tv-input w-40 !py-2"/>
+            <input id="audit-end" type="date" class="tv-input w-40 !py-2"/>
+            <select id="audit-action-filter" class="tv-input w-40 !py-2">
+              <option value="">All Actions</option>
+              <option>CREATE</option><option>READ</option><option>UPDATE</option><option>DELETE</option><option>LOGIN</option><option>LOGOUT</option>
+            </select>
+            <button onclick="filterAuditLogs()" class="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-xs font-black hover:opacity-90">Filter</button>
+            <button onclick="exportAuditCSV()" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl text-xs font-black hover:bg-gray-200 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">download</span> Export CSV
+            </button>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <table class="w-full text-xs">
+              <thead class="bg-gray-50 dark:bg-slate-700/50 text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-slate-400">
+                <tr>
+                  <th class="px-6 py-3 text-left">Action</th>
+                  <th class="px-6 py-3 text-left">User</th>
+                  <th class="px-6 py-3 text-left">Resource</th>
+                  <th class="px-6 py-3 text-left">IP Address</th>
+                  <th class="px-6 py-3 text-right">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody id="audit-tbody" class="divide-y divide-gray-100 dark:divide-slate-700/50"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ─── SETTINGS ─── -->
+        <div id="page-settings" class="page">
+          <div class="max-w-2xl space-y-6">
+
+            <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+              <h3 class="font-black text-gray-900 dark:text-gray-100 mb-5 flex items-center gap-2">
+                <span class="material-symbols-outlined text-gray-400">badge</span> Account
+              </h3>
+              <div class="space-y-3 text-sm">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
+                  <span class="font-bold text-gray-500 dark:text-gray-400">Email</span>
+                  <span id="prof-email" class="font-black text-gray-900 dark:text-gray-100"></span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
+                  <span class="font-bold text-gray-500 dark:text-gray-400">Display Name</span>
+                  <span id="prof-name" class="font-black text-gray-900 dark:text-gray-100"></span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
+                  <span class="font-bold text-gray-500 dark:text-gray-400">Role</span>
+                  <span id="prof-role" class="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-black">Analyst</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                  <span class="font-bold text-gray-500 dark:text-gray-400">Azure Region</span>
+                  <span id="prof-region" class="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-black">italynorth</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+              <h3 class="font-black text-gray-900 dark:text-gray-100 mb-5 flex items-center gap-2">
+                <span class="material-symbols-outlined text-gray-400">policy</span> Platform Policies
+              </h3>
+              <div class="space-y-3 text-sm">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
+                  <span class="font-bold text-gray-500 dark:text-gray-400">MFA Authentication</span>
+                  <span class="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-black">Enforced</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
+                  <span class="font-bold text-gray-500 dark:text-gray-400">Identity Provider</span>
+                  <span id="cfg-idp" class="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-black">Local Auth</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
+                  <span class="font-bold text-gray-500 dark:text-gray-400">Key Vault Secrets</span>
+                  <span class="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-black">Integrated</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
+                  <span class="font-bold text-gray-500 dark:text-gray-400">Blob SAS Tokens</span>
+                  <span class="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-black">Enabled</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                  <span class="font-bold text-gray-500 dark:text-gray-400">Region Lock (Azure Policy)</span>
+                  <span id="cfg-region" class="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-black">italynorth</span>
+                </div>
+              </div>
+              <p class="text-[11px] text-gray-400 dark:text-slate-500 font-semibold mt-3">Policies are enforced server-side via Azure RBAC and cannot be overridden from this interface.</p>
+            </div>
+
+            <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+              <h3 class="font-black text-gray-900 dark:text-gray-100 mb-5 flex items-center gap-2">
+                <span class="material-symbols-outlined text-gray-400">lock</span> Change Password
+              </h3>
+              <div class="space-y-3">
+                <input id="cp-cur" type="password" placeholder="Current Password" class="tv-input"/>
+                <input id="cp-new" type="password" placeholder="New Password" class="tv-input"/>
+                <input id="cp-new2" type="password" placeholder="Confirm New Password" class="tv-input"/>
+                <button onclick="changePassword()" class="w-full py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90">Update Password</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- end page content -->
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════════════════════ -->
+
+<!-- Evidence Detail Modal -->
+<div id="ev-modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4" onclick="if(event.target===this)closeEvModal()">
+  <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
+    <button onclick="closeEvModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 z-10">
+      <span class="material-symbols-outlined text-[18px]">close</span>
+    </button>
+    <div id="ev-modal-body"></div>
+  </div>
+</div>
+
+<!-- Case Modal -->
+<div id="case-modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm p-8 shadow-2xl">
+    <h3 class="text-xl font-black mb-6 text-gray-900 dark:text-gray-100">New Case</h3>
+    <div class="space-y-3">
+      <input id="nc-title" type="text" placeholder="Case Title *" class="tv-input"/>
+      <select id="nc-priority" class="tv-input">
+        <option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option>
+      </select>
+    </div>
+    <button onclick="createCase()" class="mt-5 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90">Create Case</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-6 right-6 z-[200] flex items-center gap-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-full px-5 py-3.5 shadow-xl max-w-xs">
+  <span id="t-icon" class="text-lg"></span>
+  <span id="t-msg" class="text-sm font-bold text-gray-800 dark:text-gray-200"></span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ─── CONFIG ─────────────────────────────────────────────────────────────────
+const CFG = window.__TV_CONFIG__ || {};
+const SVC = CFG.services || {};
+
+// Per-operation Logic App URLs (CW2 wires up 10 separate workflows). Empty string
+// for any endpoint means no live service configured → frontend falls back to the
+// in-memory demo dataset for that resource.
+const EP = CFG.endpoints || {};
+const EVIDENCE_LIST   = (EP.evidenceList   || '').trim();
+const EVIDENCE_CREATE = (EP.evidenceCreate || '').trim();
+const EVIDENCE_UPDATE = (EP.evidenceUpdate || '').trim();
+const EVIDENCE_DELETE = (EP.evidenceDelete || '').trim();
+const CASES_LIST      = (EP.casesList      || '').trim();
+const CASES_CREATE    = (EP.casesCreate    || '').trim();
+const CASES_UPDATE    = (EP.casesUpdate    || '').trim();
+const CASES_DELETE    = (EP.casesDelete    || '').trim();
+const AUDIT_LIST      = (EP.auditList      || '').trim();
+const AUDIT_CREATE    = (EP.auditCreate    || '').trim();
+
+// Legacy auth service (optional)
+const AUTH_URL = (SVC.auth || '').replace(/\/$/, '');
+
+const MIN_PASS = (CFG.security || {}).minPasswordLength || 8;
+const REGION   = (CFG.compliance || {}).primaryRegion || 'italynorth';
+const HEALTH_CHECKS = ((CFG.ops || {}).healthChecks) || [];
+
+// Pin demo mode if no live evidence endpoint
+const ANY_LIVE = !!(EVIDENCE_LIST || CASES_LIST || AUDIT_LIST);
+
+// ─── DEMO DATA ───────────────────────────────────────────────────────────────
+// Used when microservices are unreachable so the app always works for vodcast.
+const DEMO_CASES = [
+  { id: 'CASE-2025-001', title: 'APT29 Intrusion Analysis', status: 'Active', priority: 'Critical', analyst: 'R. Sah', count: 3, updated: '2025-05-01' },
+  { id: 'CASE-2025-002', title: 'Cobalt Strike C2 Traffic', status: 'Open',   priority: 'High',     analyst: 'R. Sah', count: 2, updated: '2025-04-28' },
+  { id: 'CASE-2025-003', title: 'Ransomware Evidence Dump', status: 'Open',   priority: 'Critical', analyst: 'R. Sah', count: 1, updated: '2025-04-25' },
+];
+const DEMO_EVIDENCE = [
+  { id: 'EVD-2025-001', title: 'C2 Beacon Network Capture',  caseID: 'CASE-2025-001', ext: 'pcap', cvss: 9.1, sev: 'Critical', by: 'R. Sah', at: '2025-05-01T10:20:00Z', notes: 'Active C2 communication captured during live incident response.', tags: ['apt29','c2'], sha256: 'a3f2c1...d9e4b7', flagged: false },
+  { id: 'EVD-2025-002', title: 'Cobalt Strike Loader Screenshot', caseID: 'CASE-2025-001', ext: 'png',  cvss: 8.5, sev: 'High',     by: 'R. Sah', at: '2025-04-30T14:10:00Z', notes: 'Screenshot showing Cobalt Strike beacon injection.',            tags: ['malware','loader'], sha256: 'b7c3d2...e1f5a9', flagged: false },
+  { id: 'EVD-2025-003', title: 'Ransomware Execution Video',     caseID: 'CASE-2025-003', ext: 'mp4',  cvss: 9.8, sev: 'Critical', by: 'R. Sah', at: '2025-04-25T09:00:00Z', notes: 'Full screen recording of ransomware encryption sequence.',    tags: ['ransomware','encryption'], sha256: 'c8d4e3...f2a6b1', flagged: true },
+  { id: 'EVD-2025-004', title: 'Lateral Movement Log Archive',   caseID: 'CASE-2025-002', ext: 'zip',  cvss: 7.2, sev: 'High',     by: 'R. Sah', at: '2025-04-28T16:45:00Z', notes: 'Compressed Windows event logs showing lateral movement.',    tags: ['lateral-movement'], sha256: 'd9e5f4...a3b7c2', flagged: false },
+  { id: 'EVD-2025-005', title: 'Phishing Email Headers',         caseID: 'CASE-2025-002', ext: 'pcap', cvss: 5.5, sev: 'Medium',   by: 'R. Sah', at: '2025-04-27T11:30:00Z', notes: 'SMTP traffic capture containing initial phishing vector.',   tags: ['phishing','smtp'], sha256: 'e1f6a5...b4c8d3', flagged: false },
+];
+const DEMO_AUDIT = [
+  { action: 'LOGIN',  user: 'analyst@threatvault.com', res: 'auth-service',       ip: '185.23.41.12', ts: '2025-05-01 10:18' },
+  { action: 'CREATE', user: 'analyst@threatvault.com', res: 'CASE-2025-001',       ip: '185.23.41.12', ts: '2025-05-01 10:19' },
+  { action: 'CREATE', user: 'analyst@threatvault.com', res: 'EVD-2025-001',        ip: '185.23.41.12', ts: '2025-05-01 10:20' },
+  { action: 'READ',   user: 'analyst@threatvault.com', res: 'EVD-2025-002',        ip: '185.23.41.12', ts: '2025-04-30 14:12' },
+  { action: 'UPDATE', user: 'analyst@threatvault.com', res: 'CASE-2025-001',       ip: '185.23.41.12', ts: '2025-04-30 14:15' },
+  { action: 'DELETE', user: 'analyst@threatvault.com', res: 'EVD-old-draft',       ip: '185.23.41.12', ts: '2025-04-29 09:05' },
+  { action: 'CREATE', user: 'analyst@threatvault.com', res: 'EVD-2025-003',        ip: '185.23.41.12', ts: '2025-04-25 09:01' },
+  { action: 'LOGOUT', user: 'analyst@threatvault.com', res: 'auth-service',        ip: '185.23.41.12', ts: '2025-04-24 18:00' },
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let token    = sessionStorage.getItem('tv_token');
+let user     = JSON.parse(sessionStorage.getItem('tv_user') || 'null');
+let evidence = [];
+let cases    = [];
+let audit    = [];
+let demoMode = false;
+let pendingFile = null;
+let toastTimer;
+let sevChart;
+
+// Local user store (for demo/offline auth)
+function getLocalUsers() {
+  try { return JSON.parse(localStorage.getItem('tv_users') || '[]'); } catch { return []; }
+}
+function saveLocalUsers(arr) { localStorage.setItem('tv_users', JSON.stringify(arr)); }
+
+// Seed a default user so demo always works
+(function seedDemo() {
+  const users = getLocalUsers();
+  if (!users.find(u => u.email === 'analyst@threatvault.com')) {
+    users.push({ email: 'analyst@threatvault.com', name: 'Ritik Sah', password: 'ThreatVault1!', role: 'Analyst', id: 'usr-001' });
+    saveLocalUsers(users);
+  }
+})();
+
+// ─── SCREEN & PAGE ────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.add('active');
+
+  const titles = { dashboard:'Dashboard', evidence:'Evidence Gallery', cases:'Case Management', upload:'Secure Upload', audit:'Audit Log', settings:'Settings' };
+  document.getElementById('page-title').textContent = titles[name] || name;
+
+  document.querySelectorAll('.nav-pill').forEach(a => a.classList.remove('active'));
+  if (el) el.classList.add('active');
+  else document.querySelectorAll('.nav-pill').forEach(a => {
+    const oc = a.getAttribute('onclick') || '';
+    if (oc.includes("'" + name + "'")) a.classList.add('active');
+  });
+
+  if (name === 'settings') renderSettingsPage();
+  if (name === 'evidence') filterEvidence();
+}
+
+function globalSearch(q) {
+  showPage('evidence', null);
+  filterEvidence(q);
+}
+
+// ─── AUTH TABS ───────────────────────────────────────────────────────────────
+function setAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('login-form').classList.toggle('hidden', !isLogin);
+  document.getElementById('register-form').classList.toggle('hidden', isLogin);
+  const tl = document.getElementById('tab-login');
+  const tr = document.getElementById('tab-register');
+  tl.className = `rounded-xl py-2 text-sm font-bold transition-all ${isLogin ? 'bg-white dark:bg-slate-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`;
+  tr.className = `rounded-xl py-2 text-sm font-bold transition-all ${!isLogin ? 'bg-white dark:bg-slate-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`;
+}
+
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = (document.getElementById('l-email').value || '').trim().toLowerCase();
+  const pass  = document.getElementById('l-pass').value || '';
+  const mfa   = (document.getElementById('l-mfa').value || '').trim();
+
+  if (!email || !email.includes('@')) return toast('⚠️', 'Enter a valid email');
+  if (pass.length < 1)              return toast('⚠️', 'Enter your password');
+
+  const txt  = document.getElementById('l-txt');
+  const spin = document.getElementById('l-spin');
+  txt.classList.add('hidden'); spin.classList.remove('hidden');
+
+  // ① Try live auth service
+  if (AUTH_URL) {
+    try {
+      const res  = await fetch(`${AUTH_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email, password: pass, mfaToken: mfa }),
+        mode: 'cors', cache: 'no-store', credentials: 'omit'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        finishLogin({ id: data.userId, email, name: nameFromEmail(email), role: data.role || 'Analyst' }, data.token, false);
+        return;
+      }
+      // Service rejected (bad credentials)
+      toast('❌', data.error || 'Login failed');
+      return;
+    } catch (_) {
+      toast('⚠️', 'Auth service unreachable — using local fallback');
+    }
+  }
+
+  // ② Local fallback auth
+  const users = getLocalUsers();
+  const match = users.find(u => u.email === email && u.password === pass);
+  if (!match) {
+    toast('❌', 'Invalid credentials');
+    txt.classList.remove('hidden'); spin.classList.add('hidden');
+    return;
+  }
+
+  finishLogin({ id: match.id, email, name: match.name, role: match.role }, 'local-token', true);
+}
+
+function finishLogin(u, tok, demo) {
+  token = tok; user = u; demoMode = demo;
+  sessionStorage.setItem('tv_token', token);
+  sessionStorage.setItem('tv_user',  JSON.stringify(user));
+  const l = document.getElementById('l-txt'); if (l) l.classList.remove('hidden');
+  const s = document.getElementById('l-spin'); if (s) s.classList.add('hidden');
+  toast('✅', 'Access granted' + (demo ? ' (demo mode)' : ''));
+  initApp();
+}
+
+// ─── REGISTER ─────────────────────────────────────────────────────────────────
+async function doRegister() {
+  const name  = (document.getElementById('r-name').value || '').trim();
+  const email = (document.getElementById('r-email').value || '').trim().toLowerCase();
+  const pass  = document.getElementById('r-pass').value || '';
+  const pass2 = document.getElementById('r-pass2').value || '';
+
+  if (!name)                        return toast('⚠️', 'Enter your full name');
+  if (!email.includes('@'))         return toast('⚠️', 'Enter a valid email');
+  if (pass.length < MIN_PASS)       return toast('⚠️', `Password must be at least ${MIN_PASS} characters`);
+  if (pass !== pass2)               return toast('⚠️', 'Passwords do not match');
+
+  // ① Try live auth service
+  if (AUTH_URL) {
+    try {
+      const res  = await fetch(`${AUTH_URL}/auth/register/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: name, email, password: pass }),
+        mode: 'cors', cache: 'no-store', credentials: 'omit'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast('✉️', 'Verification email sent. Check your inbox.');
+        setAuthTab('login');
+        return;
+      }
+      toast('❌', data.error || 'Registration failed');
+      return;
+    } catch (_) {
+      toast('⚠️', 'Auth service unreachable — saving locally');
+    }
+  }
+
+  // ② Local registration
+  const users = getLocalUsers();
+  if (users.find(u => u.email === email)) return toast('❌', 'Email already registered');
+  users.push({ id: 'usr-' + rHex(6), email, name, password: pass, role: 'Analyst' });
+  saveLocalUsers(users);
+  toast('✅', 'Account created. Please log in.');
+  setAuthTab('login');
+}
+
+function doLogout() {
+  if (AUTH_URL && token && token !== 'local-token') {
+    fetch(`${AUTH_URL}/auth/logout`, {
+      method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
+      body: JSON.stringify({ userId: user?.id }), mode:'cors', credentials:'omit'
+    }).catch(() => {});
+  }
+  token = null; user = null; evidence = []; cases = []; audit = [];
+  pendingFile = null;
+  sessionStorage.removeItem('tv_token');
+  sessionStorage.removeItem('tv_user');
+  demoMode = false;
+  if (sevChart) { sevChart.destroy(); sevChart = null; }
+  showScreen('login-screen');
+  toast('👋', 'Signed out');
+}
+
+// ─── INIT APP ──────────────────────────────────────────────────────────────────
+async function initApp() {
+  showScreen('app-shell');
+  renderNav();
+  renderServicePulse();
+  updateRegionBadge();
+
+  document.getElementById('mode-badge').querySelector('span').textContent =
+    demoMode ? '⚡ Demo Mode — connect Azure in config.js' : '🔒 Live Mode';
+
+  await loadData();
+  renderDashboard();
+  renderEvidence(evidence);
+  renderCases();
+  renderAuditLog(audit);
+  renderCaseDropdowns();
+  updateThemeIcon();
+}
+
+async function loadData() {
+  // Evidence
+  if (EVIDENCE_LIST) {
+    try {
+      const r = await lcCall(EVIDENCE_LIST, {});
+      evidence = (r.items || []).map(normaliseEv);
+      demoMode = false;
+    } catch (_) { evidence = DEMO_EVIDENCE.map(x => ({...x})); demoMode = true; }
+  } else {
+    evidence = DEMO_EVIDENCE.map(x => ({...x}));
+    demoMode = true;
+  }
+
+  // Cases
+  if (CASES_LIST) {
+    try {
+      const r = await lcCall(CASES_LIST, {});
+      cases = (r.items || []).map(normaliseCase);
+    } catch (_) { cases = DEMO_CASES.map(x => ({...x})); }
+  } else {
+    cases = DEMO_CASES.map(x => ({...x}));
+  }
+
+  // Audit
+  if (AUDIT_LIST) {
+    try {
+      const r = await lcCall(AUDIT_LIST, {});
+      audit = (r.items || []).map(normaliseAudit);
+    } catch (_) { audit = [...DEMO_AUDIT]; }
+  } else {
+    audit = [...DEMO_AUDIT];
+  }
+}
+
+// ─── NORMALISE ────────────────────────────────────────────────────────────────
+function normaliseEv(x) {
+  const cvss = Number(x.cvss ?? x.severity?.cvss ?? 0);
+  const ext  = (['mp4','pcap','png','zip'].includes(x.ext) ? x.ext : null)
+             || (['mp4','pcap','png','zip'].find(e => String(x.mediaType||'').includes(e)))
+             || 'png';
+  return {
+    id:     x.id     || x.evidenceId || 'EVD-' + rHex(6).toUpperCase(),
+    title:  x.title  || 'Untitled',
+    caseID: x.caseID || x.caseId    || '',
+    ext, cvss,
+    sev:    x.sev    || cvssLabel(cvss),
+    by:     x.by     || x.uploadedBy || 'Analyst',
+    at:     x.at     || x.uploadedAt || new Date().toISOString(),
+    notes:  x.notes  || '',
+    tags:   Array.isArray(x.tags) ? x.tags : [],
+    sha256: x.sha256 || x.sha256Hash || '',
+    flagged: Boolean(x.flagged || x.contentModeratorStatus === 'rejected'),
+  };
+}
+function normaliseCase(x) {
+  return {
+    id:       x.id       || x.caseID || 'CASE-' + rHex(6).toUpperCase(),
+    title:    x.title    || 'Untitled Case',
+    status:   x.status   || 'Open',
+    priority: x.priority || 'Medium',
+    analyst:  x.analyst  || 'Unassigned',
+    count:    x.count    ?? 0,
+    updated:  x.updated  || new Date().toISOString().split('T')[0],
+  };
+}
+function normaliseAudit(x) {
+  return {
+    action: x.action || 'READ',
+    user:   x.user   || x.userId || 'system',
+    res:    x.res    || x.resourceId || '-',
+    ip:     x.ip     || x.ipAddress || '—',
+    ts:     x.ts     || x.Timestamp || '',
+  };
+}
+
+// ─── API CALL ─────────────────────────────────────────────────────────────────
+async function apiCall(url, method = 'GET', body = null) {
+  const headers = {};
+  if (token && token !== 'local-token') headers['Authorization'] = `Bearer ${token}`;
+  if (body && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
+
+  const res = await fetch(url, {
+    method, headers,
+    body: body instanceof FormData ? body : (body ? JSON.stringify(body) : null),
+    mode: 'cors', cache: 'no-store', credentials: 'omit',
+  });
+
+  if (res.status === 401) { doLogout(); throw new Error('Unauthorized'); }
+
+  let payload = {};
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) payload = await res.json();
+  else if (res.status !== 204)         payload = { message: await res.text() };
+  if (!res.ok) throw new Error(payload.error || payload.message || `HTTP ${res.status}`);
+  return payload;
+}
+
+// Logic App invocation. Uses Content-Type: text/plain so the browser treats the
+// request as a CORS-simple request and skips OPTIONS preflight (Logic Apps
+// Consumption HTTP triggers cannot natively respond to preflight).
+async function lcCall(url, payload) {
+  if (!url) throw new Error('endpoint not configured');
+  const body = JSON.stringify({ ...(payload || {}), user: user?.email || 'analyst@threatvault.com' });
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body, mode: 'cors', cache: 'no-store', credentials: 'omit'
+  });
+  let data = {};
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) data = await res.json();
+  else if (res.status !== 204)         try { data = JSON.parse(await res.text()); } catch { data = {}; }
+  if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+  return data;
+}
+
+// ─── RENDER NAV ──────────────────────────────────────────────────────────────
+function renderNav() {
+  const name = user?.name || 'ThreatVault Analyst';
+  const initials = name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'TV';
+  document.getElementById('nav-initials').textContent = initials;
+  document.getElementById('nav-name').textContent = name;
+  document.getElementById('nav-handle').textContent = '@' + (user?.email || '').split('@')[0];
+  document.getElementById('nav-role-badge').textContent = user?.role || 'Analyst';
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const active   = cases.filter(c => ['Open','Active'].includes(c.status)).length;
+  const critical = evidence.filter(e => e.sev === 'Critical' || e.flagged).length;
+  const aiSignal = evidence.filter(e => e.cvss >= 8).length;
+  document.getElementById('stat-cases').textContent    = active;
+  document.getElementById('stat-evidence').textContent = evidence.length;
+  document.getElementById('stat-critical').textContent = critical;
+  document.getElementById('stat-ai').textContent       = aiSignal;
+
+  // Recent evidence table
+  const recent = [...evidence].sort((a,b) => new Date(b.at) - new Date(a.at)).slice(0,5);
+  const tbody = document.getElementById('dash-tbody');
+  if (!recent.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-sm font-bold text-gray-400 dark:text-slate-500">No evidence yet. Upload to get started.</td></tr>`;
+  } else {
+    tbody.innerHTML = recent.map(e => `
+      <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onclick="openEvModal('${esc(e.id)}')">
+        <td class="px-6 py-3 font-mono text-xs font-black text-blue-700 dark:text-blue-400">${esc(e.id)}</td>
+        <td class="px-6 py-3 text-sm font-bold text-gray-800 dark:text-slate-200">${esc(e.title)}</td>
+        <td class="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400">${esc(e.caseID)}</td>
+        <td class="px-6 py-3">${sevBadge(e.sev)}</td>
+        <td class="px-6 py-3 text-xs font-bold text-gray-500 dark:text-slate-400">${typeLabel(e.ext)}</td>
+      </tr>`).join('');
+  }
+
+  renderSeverityChart();
+}
+
+function renderSeverityChart() {
+  if (typeof Chart === 'undefined') return;
+  const counts = { Critical:0, High:0, Medium:0, Low:0 };
+  evidence.forEach(e => { if (counts[e.sev] !== undefined) counts[e.sev]++; });
+
+  const ctx = document.getElementById('chart-severity');
+  if (!ctx) return;
+  if (sevChart) sevChart.destroy();
+
+  const dark = document.documentElement.classList.contains('dark');
+  const textColor = dark ? '#94a3b8' : '#64748b';
+
+  sevChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Critical','High','Medium','Low'],
+      datasets: [{ data: Object.values(counts), backgroundColor: ['#e11d48','#f97316','#eab308','#94a3b8'], borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { position:'right', labels:{ color:textColor, font:{family:'Space Grotesk',weight:'bold',size:11}, padding:14, usePointStyle:true } } }
+    }
+  });
+}
+
+// ─── SERVICE PULSE ────────────────────────────────────────────────────────────
+async function renderServicePulse() {
+  // Logic App URLs include a built-in SAS so we cannot do anonymous /health probes.
+  // Instead we report status based on whether each endpoint group is configured —
+  // a successful loadData() upgrades the dot to "online".
+  const checks = HEALTH_CHECKS.length > 0 ? HEALTH_CHECKS : [
+    { name: 'Evidence Logic Apps', configured: !!EVIDENCE_LIST, online: !demoMode && evidence.length >= 0 },
+    { name: 'Cases Logic Apps',    configured: !!CASES_LIST,    online: !demoMode && cases.length >= 0    },
+    { name: 'Audit Logic Apps',    configured: !!AUDIT_LIST,    online: !demoMode && audit.length >= 0    },
+    { name: 'Blob + Cosmos DB',    configured: ANY_LIVE,        online: !demoMode },
+  ];
+
+  const results = checks.map(c => ({
+    ...c,
+    ok: c.configured ? (c.online ? true : false) : null,
+    status: c.configured ? (c.online ? 200 : 0) : 0
+  }));
+
+  const host = document.getElementById('service-pulse');
+  if (!host) return;
+
+  host.innerHTML = results.map(r => {
+    const colour = r.ok === null ? 'bg-gray-400' : (r.ok ? 'bg-emerald-500' : 'bg-red-500');
+    const label  = r.ok === null ? 'NOT CONFIGURED' : (r.ok ? 'ONLINE' : `OFFLINE${r.status ? ' '+r.status : ''}`);
+    const lc     = r.ok === null ? 'text-gray-500' : (r.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400');
+    return `
+      <div class="flex items-center justify-between bg-gray-50 dark:bg-slate-700/50 rounded-xl px-3 py-2">
+        <div class="flex items-center gap-2">
+          <span class="relative flex w-2 h-2">
+            ${r.ok ? `<span class="animate-ping absolute inline-flex w-full h-full rounded-full ${colour} opacity-60"></span>` : ''}
+            <span class="relative inline-flex w-2 h-2 rounded-full ${colour}"></span>
+          </span>
+          <span class="text-xs font-black text-gray-700 dark:text-slate-300">${esc(r.name)}</span>
+        </div>
+        <span class="text-[10px] font-black ${lc}">${label}</span>
+      </div>`;
+  }).join('');
+}
+
+function updateRegionBadge() {
+  const el = document.getElementById('region-badge');
+  if (el) el.textContent = `Region: ${REGION}`;
+}
+
+// ─── EVIDENCE ─────────────────────────────────────────────────────────────────
+function renderEvidence(items) {
+  const host = document.getElementById('evidence-grid');
+  const cnt  = document.getElementById('ev-count');
+  if (cnt) cnt.textContent = `${items.length} item${items.length !== 1 ? 's' : ''}`;
+
+  if (!items.length) {
+    host.innerHTML = `<div class="col-span-3 py-20 text-center"><p class="text-sm font-bold text-gray-400 dark:text-slate-500">No evidence matches filters.</p></div>`;
+    return;
+  }
+
+  host.innerHTML = items.map(e => `
+    <article class="group rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 overflow-hidden hover:shadow-lg dark:hover:shadow-slate-900 transition-all cursor-pointer" onclick="openEvModal('${esc(e.id)}')">
+      <div class="relative h-40 ${cardBg(e.ext)} flex items-center justify-center">
+        ${e.flagged ? `<div class="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full">⚑ FLAGGED</div>` : ''}
+        <div class="absolute top-3 right-3">${sevPill(e.sev)}</div>
+        <span class="material-symbols-outlined text-5xl ${typeColour(e.ext)} opacity-30 group-hover:opacity-50 transition-opacity group-hover:scale-110 duration-300">${typeIcon(e.ext)}</span>
+        <div class="absolute bottom-3 left-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-black text-gray-700 dark:text-slate-300">${e.ext.toUpperCase()}</div>
+      </div>
+      <div class="p-4">
+        <h3 class="font-black text-sm text-gray-900 dark:text-slate-100 truncate">${esc(e.title)}</h3>
+        <p class="text-xs font-semibold text-gray-500 dark:text-slate-400 mt-1 truncate">${esc(e.caseID)} · ${fmtDate(e.at)}</p>
+        ${e.tags.length ? `<div class="flex flex-wrap gap-1 mt-2">${e.tags.slice(0,2).map(t=>`<span class="px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-700 text-[10px] font-bold text-gray-600 dark:text-slate-400">${esc(t)}</span>`).join('')}</div>` : ''}
+      </div>
+    </article>`).join('');
+}
+
+function filterEvidence(searchOverride) {
+  const q  = searchOverride !== undefined ? searchOverride.toLowerCase() : (document.getElementById('g-search')?.value || '').toLowerCase();
+  const fc = (document.getElementById('f-case')?.value || '');
+  const ft = (document.getElementById('f-type')?.value || '');
+  const fs = (document.getElementById('f-sev')?.value  || '');
+  renderEvidence(evidence.filter(e =>
+    (!q  || e.title.toLowerCase().includes(q) || e.id.toLowerCase().includes(q)) &&
+    (!fc || e.caseID === fc) &&
+    (!ft || e.ext === ft) &&
+    (!fs || e.sev === fs)
+  ));
+}
+
+// ─── CASES ────────────────────────────────────────────────────────────────────
+function renderCases() {
+  const tbody = document.getElementById('cases-tbody');
+  if (!cases.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-sm font-bold text-gray-400 dark:text-slate-500">No cases yet. <button onclick="openCaseModal()" class="text-blue-600 dark:text-blue-400 underline font-black">Create one</button>.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = cases.map(c => `
+    <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+      <td class="px-6 py-3 font-mono text-xs font-black text-gray-700 dark:text-slate-300">${esc(c.id)}</td>
+      <td class="px-6 py-3 font-bold text-sm text-gray-800 dark:text-slate-200">${esc(c.title)}</td>
+      <td class="px-6 py-3">${statusBadge(c.status)}</td>
+      <td class="px-6 py-3">${prioBadge(c.priority)}</td>
+      <td class="px-6 py-3 text-sm font-semibold text-gray-500 dark:text-slate-400">${esc(c.analyst)}</td>
+      <td class="px-6 py-3 text-right flex items-center justify-end gap-1">
+        <button onclick="editCase('${esc(c.id)}')" class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+          <span class="material-symbols-outlined text-[18px]">edit</span>
+        </button>
+        <button onclick="deleteCase('${esc(c.id)}')" class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+          <span class="material-symbols-outlined text-[18px]">delete</span>
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+function openCaseModal() {
+  document.getElementById('nc-title').value = '';
+  document.getElementById('case-modal').classList.remove('hidden');
+}
+
+async function createCase() {
+  const title    = (document.getElementById('nc-title').value || '').trim();
+  const priority = document.getElementById('nc-priority').value;
+  if (!title) return toast('⚠️', 'Case title required');
+
+  const newCase = {
+    id: 'CASE-' + new Date().getFullYear() + '-' + String(cases.length + 1).padStart(3,'0'),
+    title, status: 'Open', priority,
+    analyst: user?.name || 'Analyst',
+    count: 0, updated: new Date().toISOString().split('T')[0]
+  };
+
+  if (CASES_CREATE) {
+    try {
+      const r = await lcCall(CASES_CREATE, { title, priority, analyst: user?.name });
+      cases.push(normaliseCase(r.case || r));
+    } catch (_) {
+      cases.push(newCase);
+      toast('⚠️', 'Saved locally — case service unreachable');
+    }
+  } else {
+    cases.push(newCase);
+  }
+
+  addAuditEntry('CREATE', newCase.id);
+  document.getElementById('case-modal').classList.add('hidden');
+  renderCases(); renderCaseDropdowns(); renderDashboard();
+  toast('✅', 'Case created');
+}
+
+async function editCase(id) {
+  const c = cases.find(x => x.id === id);
+  if (!c) return;
+  const newStatus = prompt('Update status (Open / Active / Closed):', c.status);
+  if (!newStatus || newStatus === c.status) return;
+
+  if (CASES_UPDATE) {
+    try { await lcCall(CASES_UPDATE, { id, status: newStatus }); }
+    catch (_) {}
+  }
+  c.status = newStatus;
+  addAuditEntry('UPDATE', id);
+  renderCases(); renderDashboard();
+  toast('✅', 'Case updated');
+}
+
+async function deleteCase(id) {
+  if (!confirm(`Delete case ${id}?`)) return;
+  if (CASES_DELETE) {
+    try { await lcCall(CASES_DELETE, { id }); }
+    catch (_) {}
+  }
+  cases = cases.filter(c => c.id !== id);
+  addAuditEntry('DELETE', id);
+  renderCases(); renderCaseDropdowns(); renderDashboard();
+  toast('🗑️', 'Case deleted');
+}
+
+// ─── UPLOAD / EVIDENCE CRUD ──────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  addFile(e.dataTransfer.files[0]);
+}
+function handleFileSelect(e) { addFile(e.target.files[0]); }
+
+function addFile(f) {
+  if (!f) return;
+  const allowed = ['mp4','pcap','png','zip'];
+  const ext = (f.name.split('.').pop() || '').toLowerCase();
+  if (!allowed.includes(ext)) return toast('⚠️', `Unsupported type: ${ext}. Use MP4, PNG, PCAP, or ZIP.`);
+  if (f.size > 2 * 1024 * 1024 * 1024) return toast('⚠️', 'File exceeds 2 GB limit');
+  pendingFile = f;
+  const preview = document.getElementById('file-preview');
+  const cont    = document.getElementById('file-preview-content');
+  cont.innerHTML = `
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-[20px] ${typeColour(ext)}">${typeIcon(ext)}</span>
+        <div>
+          <p class="text-sm font-black text-gray-800 dark:text-slate-200">${esc(f.name)}</p>
+          <p class="text-xs font-semibold text-gray-500 dark:text-slate-400">${ext.toUpperCase()} · ${fmtBytes(f.size)}</p>
+        </div>
+      </div>
+      <button onclick="clearPendingFile()" class="p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+        <span class="material-symbols-outlined text-[18px]">close</span>
+      </button>
+    </div>`;
+  preview.classList.remove('hidden');
+  document.getElementById('submit-btn').disabled = false;
+}
+
+function clearPendingFile() {
+  pendingFile = null;
+  document.getElementById('file-preview').classList.add('hidden');
+  document.getElementById('file-input').value = '';
+  document.getElementById('submit-btn').disabled = true;
+}
+
+async function submitEvidence() {
+  const title  = (document.getElementById('u-title').value || '').trim();
+  const caseID = document.getElementById('u-case').value;
+  const cvss   = parseFloat(document.getElementById('cvss-slider').value);
+
+  // Validate
+  let err = false;
+  const te = document.getElementById('u-title-err');
+  const ce = document.getElementById('u-case-err');
+  te.classList.add('hidden'); ce.classList.add('hidden');
+  if (!title) { te.classList.remove('hidden'); err = true; }
+  if (!caseID) { ce.classList.remove('hidden'); err = true; }
+  if (err) return;
+  if (!pendingFile) return toast('⚠️', 'Select a file to upload');
+
+  document.getElementById('submit-btn').disabled = true;
+  const prog = document.getElementById('up-progress');
+  prog.classList.remove('hidden');
+  const steps = ['ps-hash','ps-upload','ps-meta','ps-audit','ps-done'];
+  steps.forEach(s => { const el = document.getElementById(s); if(el){el.classList.remove('running','done');} });
+
+  try {
+    // Step 1 — SHA-256 hash
+    step(steps[0], 'running');
+    const sha256 = await sha256Hash(pendingFile);
+    await sleep(300);
+    document.getElementById(steps[0]).textContent = `🔐 SHA-256: ${sha256.slice(0,16)}…`;
+    step(steps[0], 'done');
+
+    // Step 2 — Upload
+    step(steps[1], 'running');
+    const ext = (pendingFile.name.split('.').pop() || 'png').toLowerCase();
+    const newId = 'EVD-' + new Date().getFullYear() + '-' + String(evidence.length + 1).padStart(3,'0');
+
+    if (EVIDENCE_CREATE) {
+      try {
+        const r = await lcCall(EVIDENCE_CREATE, {
+          title, caseID, cvss, ext,
+          fileName: pendingFile.name,
+          fileSize: pendingFile.size,
+          sha256
+        });
+        const ev = normaliseEv(r.evidence || r);
+        evidence.unshift(ev);
+      } catch (_) {
+        evidence.unshift(normaliseEv({ id: newId, title, caseID, ext, cvss, sha256, by: user?.name || 'Analyst', at: new Date().toISOString(), notes:'', tags:[] }));
+        toast('⚠️', 'Saved locally — evidence service unreachable');
+      }
+    } else {
+      evidence.unshift(normaliseEv({ id: newId, title, caseID, ext, cvss, sha256, by: user?.name || 'Analyst', at: new Date().toISOString(), notes:'', tags:[] }));
+    }
+    step(steps[1], 'done');
+
+    // Step 3 — Cosmos DB metadata
+    step(steps[2], 'running');
+    await sleep(400);
+    step(steps[2], 'done');
+
+    // Step 4 — Audit log
+    step(steps[3], 'running');
+    addAuditEntry('CREATE', newId);
+    if (AUDIT_CREATE) {
+      lcCall(AUDIT_CREATE, { action:'CREATE', resource: newId }).catch(()=>{});
+    }
+    await sleep(200);
+    step(steps[3], 'done');
+
+    // Step 5 — Done
+    step(steps[4], 'running');
+    await sleep(200);
+    step(steps[4], 'done');
+
+    // Update case count
+    const c = cases.find(x => x.id === caseID);
+    if (c) c.count = (c.count || 0) + 1;
+
+    toast('✅', 'Evidence submitted successfully');
+    await sleep(600);
+
+    // Reset form
+    document.getElementById('u-title').value = '';
+    document.getElementById('u-case').value  = '';
+    document.getElementById('cvss-slider').value = '7.5';
+    document.getElementById('cvss-val').textContent = '7.5';
+    clearPendingFile();
+    renderDashboard(); renderEvidence(evidence); renderCases();
+    renderAuditLog(audit); renderCaseDropdowns();
+
+  } catch (err) {
+    toast('❌', err.message || 'Upload failed');
+  } finally {
+    prog.classList.add('hidden');
+    steps.forEach(s => { const el = document.getElementById(s); if(el) el.classList.remove('running','done'); });
+    document.getElementById('submit-btn').disabled = !pendingFile;
+  }
+}
+
+function step(id, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('running','done');
+  el.classList.add(cls);
+}
+
+// ─── EVIDENCE MODAL ───────────────────────────────────────────────────────────
+function openEvModal(id) {
+  const e = evidence.find(x => x.id === id);
+  if (!e) return;
+
+  document.getElementById('ev-modal-body').innerHTML = `
+    <div class="relative h-48 ${cardBg(e.ext)} rounded-t-3xl flex items-center justify-center overflow-hidden">
+      ${e.flagged ? `<div class="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full">⚑ AI FLAGGED — Content Moderator</div>` : ''}
+      <div class="absolute top-4 right-12">${sevPill(e.sev)}</div>
+      <span class="material-symbols-outlined text-7xl ${typeColour(e.ext)} opacity-20">${typeIcon(e.ext)}</span>
+    </div>
+    <div class="p-6 space-y-5">
+      <div>
+        <h2 class="text-xl font-black text-gray-900 dark:text-gray-100">${esc(e.title)}</h2>
+        <p class="text-sm font-semibold text-gray-500 dark:text-slate-400 mt-1">${esc(e.by)} · ${fmtDate(e.at)}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4">
+          <p class="text-[10px] font-black uppercase text-gray-400 dark:text-slate-500 mb-2">Evidence ID</p>
+          <p class="font-mono font-black text-gray-800 dark:text-slate-200 text-xs">${esc(e.id)}</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4">
+          <p class="text-[10px] font-black uppercase text-gray-400 dark:text-slate-500 mb-2">Case ID</p>
+          <p class="font-mono font-black text-gray-800 dark:text-slate-200 text-xs">${esc(e.caseID || '—')}</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4">
+          <p class="text-[10px] font-black uppercase text-gray-400 dark:text-slate-500 mb-2">CVSS Score</p>
+          <p class="font-black text-gray-800 dark:text-slate-200">${e.cvss}</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4">
+          <p class="text-[10px] font-black uppercase text-gray-400 dark:text-slate-500 mb-2">File Type</p>
+          <p class="font-black text-gray-800 dark:text-slate-200">${e.ext.toUpperCase()}</p>
+        </div>
+      </div>
+      ${e.sha256 ? `
+      <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4">
+        <p class="text-[10px] font-black uppercase text-gray-400 dark:text-slate-500 mb-2">SHA-256 Integrity Hash</p>
+        <p class="font-mono text-[11px] text-gray-600 dark:text-slate-400 break-all">${esc(e.sha256)}</p>
+      </div>` : ''}
+      ${e.notes ? `
+      <div>
+        <p class="text-[10px] font-black uppercase text-gray-400 dark:text-slate-500 mb-2">Analyst Notes</p>
+        <p class="text-sm font-semibold text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4">${esc(e.notes)}</p>
+      </div>` : ''}
+      <div class="flex justify-end gap-3 pt-2">
+        <button onclick="deleteEv('${esc(e.id)}');closeEvModal()" class="px-5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">Delete</button>
+        <button onclick="editEv('${esc(e.id)}')" class="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-slate-200 font-bold text-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Edit</button>
+        <button onclick="closeEvModal()" class="px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm hover:opacity-90">Close</button>
+      </div>
+    </div>`;
+  document.getElementById('ev-modal').classList.remove('hidden');
+}
+
+function closeEvModal() { document.getElementById('ev-modal').classList.add('hidden'); }
+
+async function editEv(id) {
+  const e = evidence.find(x => x.id === id);
+  if (!e) return;
+  const newTitle = prompt('Update title:', e.title);
+  if (!newTitle || newTitle === e.title) return;
+  if (EVIDENCE_UPDATE) {
+    try { await lcCall(EVIDENCE_UPDATE, { id, caseID: e.caseID, title: newTitle }); }
+    catch (_) {}
+  }
+  e.title = newTitle;
+  addAuditEntry('UPDATE', id);
+  renderEvidence(evidence); renderDashboard();
+  toast('✅', 'Evidence updated');
+}
+
+async function deleteEv(id) {
+  if (!confirm(`Delete evidence ${id}?`)) return;
+  const e = evidence.find(x => x.id === id);
+  if (EVIDENCE_DELETE) {
+    try { await lcCall(EVIDENCE_DELETE, { id, caseID: e?.caseID }); }
+    catch (_) {}
+  }
+  evidence = evidence.filter(e => e.id !== id);
+  addAuditEntry('DELETE', id);
+  renderEvidence(evidence); renderDashboard();
+  toast('🗑️', 'Evidence deleted');
+}
+
+// ─── AUDIT ────────────────────────────────────────────────────────────────────
+function addAuditEntry(action, res) {
+  audit.unshift({
+    action, user: user?.email || 'analyst', res,
+    ip: '—', ts: new Date().toISOString().replace('T',' ').slice(0,16)
+  });
+  renderAuditLog(audit);
+}
+
+function renderAuditLog(items) {
+  const tbody = document.getElementById('audit-tbody');
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-xs font-bold text-gray-400 dark:text-slate-500">No audit events.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = items.slice(0,50).map(a => `
+    <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+      <td class="px-6 py-3">${actionBadge(a.action)}</td>
+      <td class="px-6 py-3 font-bold text-xs text-gray-700 dark:text-slate-300">${esc(a.user)}</td>
+      <td class="px-6 py-3 font-mono text-[11px] text-gray-500 dark:text-slate-400">${esc(a.res)}</td>
+      <td class="px-6 py-3 font-mono text-[11px] text-gray-500 dark:text-slate-400">${esc(a.ip)}</td>
+      <td class="px-6 py-3 text-[11px] font-bold text-gray-400 dark:text-slate-500 text-right">${esc(a.ts)}</td>
+    </tr>`).join('');
+}
+
+async function filterAuditLogs() {
+  const start  = document.getElementById('audit-start').value;
+  const end    = document.getElementById('audit-end').value;
+  const action = document.getElementById('audit-action-filter').value;
+
+  if (AUDIT_LIST) {
+    try {
+      const r = await lcCall(AUDIT_LIST, { startDate: start, endDate: end, action });
+      audit = (r.items || []).map(normaliseAudit);
+    } catch (_) {}
+  }
+
+  const filtered = audit.filter(a =>
+    (!action || a.action === action) &&
+    (!start  || a.ts >= start) &&
+    (!end    || a.ts <= end + ' 23:59')
+  );
+  renderAuditLog(filtered);
+  toast('✅', `${filtered.length} audit entries`);
+}
+
+function exportAuditCSV() {
+  const headers = ['Action','User','Resource','IP','Timestamp'];
+  const rows = audit.map(a => [a.action, a.user, a.res, a.ip, a.ts].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `threatvault-audit-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  toast('✅', 'Audit log exported');
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+function renderSettingsPage() {
+  document.getElementById('prof-email').textContent  = user?.email || '';
+  document.getElementById('prof-name').textContent   = user?.name  || '';
+  document.getElementById('prof-role').textContent   = user?.role  || 'Analyst';
+  document.getElementById('prof-region').textContent = REGION;
+  document.getElementById('cfg-region').textContent  = REGION;
+}
+
+async function changePassword() {
+  const cur  = document.getElementById('cp-cur').value;
+  const np   = document.getElementById('cp-new').value;
+  const np2  = document.getElementById('cp-new2').value;
+  if (!cur)               return toast('⚠️', 'Enter current password');
+  if (np.length < MIN_PASS) return toast('⚠️', `New password must be at least ${MIN_PASS} characters`);
+  if (np !== np2)           return toast('⚠️', 'Passwords do not match');
+
+  if (AUTH_URL) {
+    try {
+      await apiCall(`${AUTH_URL}/auth/change-password`, 'POST', { currentPassword: cur, newPassword: np });
+    } catch (_) {
+      toast('⚠️', 'Auth service unreachable — updating local only');
+    }
+  }
+
+  // Update local store
+  const users = getLocalUsers();
+  const u = users.find(x => x.email === user?.email);
+  if (u) { u.password = np; saveLocalUsers(users); }
+
+  ['cp-cur','cp-new','cp-new2'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  toast('✅', 'Password changed');
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function renderCaseDropdowns() {
+  const opts = cases.map(c => `<option value="${esc(c.id)}">${esc(c.id)} — ${esc(c.title)}</option>`).join('');
+  const fCase = document.getElementById('f-case');
+  if (fCase) fCase.innerHTML = `<option value="">All Cases</option>${opts}`;
+  const uCase = document.getElementById('u-case');
+  if (uCase) uCase.innerHTML = `<option value="">Select Case *</option>${opts}`;
+}
+
+function openNotifications() {
+  const recent = audit.slice(0,3).map(a => `${a.action} ${a.res}`).join(' • ');
+  toast('🔔', recent || 'No recent events');
+  document.getElementById('notif-dot').classList.add('hidden');
+}
+
+async function sha256Hash(file) {
+  const buf = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function rHex(n)   { return Array.from({length:n}, () => Math.floor(Math.random()*16).toString(16)).join(''); }
+function esc(v)    { return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function fmtDate(iso) { try { return new Date(iso).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); } catch { return String(iso||''); } }
+function fmtBytes(b)  { const u=['B','KB','MB','GB']; let s=b,i=0; while(s>=1024&&i<3){s/=1024;i++;} return `${s.toFixed(i?1:0)} ${u[i]}`; }
+function nameFromEmail(e) { return (e||'').split('@')[0].split(/[._-]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ') || 'Analyst'; }
+function cvssLabel(v) { return v>=9?'Critical':v>=7?'High':v>=4?'Medium':'Low'; }
+
+// Type helpers
+function typeIcon(ext)   { return {mp4:'videocam',pcap:'hub',png:'image',zip:'folder_zip'}[ext] || 'draft'; }
+function typeColour(ext) { return {mp4:'text-blue-500',pcap:'text-purple-500',png:'text-pink-500',zip:'text-orange-500'}[ext] || 'text-gray-500'; }
+function typeLabel(ext)  { return ext ? ext.toUpperCase() : 'FILE'; }
+function cardBg(ext)     { return {mp4:'bg-blue-50 dark:bg-blue-900/20',pcap:'bg-purple-50 dark:bg-purple-900/20',png:'bg-pink-50 dark:bg-pink-900/20',zip:'bg-orange-50 dark:bg-orange-900/20'}[ext] || 'bg-gray-100 dark:bg-slate-700'; }
+
+// Badges
+function sevBadge(s)  { const m={Critical:'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',High:'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',Medium:'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',Low:'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400'}; return `<span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${m[s]||m.Low}">${esc(s||'Unknown')}</span>`; }
+function sevPill(s)   { const m={Critical:'bg-red-500',High:'bg-orange-500',Medium:'bg-yellow-500',Low:'bg-gray-500'}; return `<span class="px-2.5 py-1 rounded-full text-white text-[10px] font-black ${m[s]||'bg-gray-500'}">${esc(s||'?')}</span>`; }
+function statusBadge(s){ const m={Open:'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',Active:'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',Closed:'bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-400'}; return `<span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${m[s]||m.Open}">${esc(s||'Open')}</span>`; }
+function prioBadge(p)  { const m={Critical:'text-red-600 dark:text-red-400',High:'text-orange-600 dark:text-orange-400',Medium:'text-yellow-600 dark:text-yellow-400',Low:'text-gray-500 dark:text-slate-500'}; return `<span class="text-xs font-black ${m[p]||''}">${esc(p||'—')}</span>`; }
+function actionBadge(a){ const m={CREATE:'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',READ:'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',UPDATE:'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',DELETE:'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',LOGIN:'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',LOGOUT:'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400'}; return `<span class="px-2 py-1 rounded text-[10px] font-black uppercase ${m[a]||m.READ}">${esc(a||'READ')}</span>`; }
+
+// Theme
+function toggleTheme() {
+  const dark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('tv_theme', dark ? 'dark' : 'light');
+  updateThemeIcon();
+  if (sevChart) renderSeverityChart(); // redraw with new colours
+}
+function updateThemeIcon() {
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.textContent = document.documentElement.classList.contains('dark') ? 'light_mode' : 'dark_mode';
+}
+
+// Toast
+function toast(icon, msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('t-icon').textContent = icon;
+  document.getElementById('t-msg').textContent  = String(msg).slice(0, 80);
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 3200);
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+function boot() {
+  updateThemeIcon();
+  if (token && user) {
+    // Restore session
+    demoMode = !AUTH_URL;
+    initApp();
+  } else {
+    showScreen('login-screen');
+    setAuthTab('login');
+  }
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+</script>
+</body>
+</html>

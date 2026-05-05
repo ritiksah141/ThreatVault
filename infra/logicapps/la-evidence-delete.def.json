@@ -1,0 +1,80 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": { "type": "Object", "defaultValue": {} }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "id":     { "type": "string" },
+            "caseID": { "type": "string" }
+          },
+          "required": ["id","caseID"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Delete_doc": {
+      "type": "ApiConnection",
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "method": "delete",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(triggerBody()?['id'])}",
+        "headers": {
+          "x-ms-documentdb-raw-partitionkey": "[\"@{triggerBody()?['caseID']}\"]"
+        }
+      }
+    },
+    "Delete_blob": {
+      "type": "ApiConnection",
+      "runAfter": { "Delete_doc": [ "Succeeded", "Failed" ] },
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['azureblob']['connectionId']" } },
+        "method": "delete",
+        "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files/@{encodeURIComponent(encodeURIComponent(concat('/evidence/', triggerBody()?['id'], '.json')))}"
+      }
+    },
+    "Audit_delete": {
+      "type": "ApiConnection",
+      "runAfter": { "Delete_blob": [ "Succeeded", "Failed" ] },
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "method": "post",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
+        "headers": {
+          "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}\"]"
+        },
+        "body": {
+          "id":     "@{guid()}",
+          "action": "DELETE",
+          "user":   "@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}",
+          "res":    "@triggerBody()?['id']",
+          "ip":     "—",
+          "ts":     "@utcNow()"
+        }
+      }
+    },
+    "Response": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": { "Audit_delete": [ "Succeeded", "Failed" ] },
+      "inputs": {
+        "statusCode": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": { "ok": true, "id": "@triggerBody()?['id']" }
+      }
+    }
+  },
+  "outputs": {}
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": { "$connections": { "type": "Object", "defaultValue": {} } },
+  "triggers": {
+    "manual": {
+      "type": "Request", "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "action":   { "type": "string" },
+            "resource": { "type": "string" },
+            "user":     { "type": "string" }
+          },
+          "required": ["action","resource"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Insert_audit": {
+      "type": "ApiConnection",
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "method": "post",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
+        "headers": { "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}\"]" },
+        "body": {
+          "id":     "@{guid()}",
+          "action": "@triggerBody()?['action']",
+          "user":   "@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}",
+          "res":    "@triggerBody()?['resource']",
+          "ip":     "—",
+          "ts":     "@utcNow()"
+        }
+      }
+    },
+    "Response": {
+      "type": "Response", "kind": "Http",
+      "runAfter": { "Insert_audit": [ "Succeeded" ] },
+      "inputs": {
+        "statusCode": 201,
+        "headers": { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        "body": { "ok": true }
+      }
+    }
+  },
+  "outputs": {}
+}

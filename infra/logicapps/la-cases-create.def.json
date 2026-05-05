@@ -1,0 +1,90 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": { "$connections": { "type": "Object", "defaultValue": {} } },
+  "triggers": {
+    "manual": {
+      "type": "Request", "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "title":    { "type": "string" },
+            "priority": { "type": "string" },
+            "analyst":  { "type": "string" },
+            "user":     { "type": "string" }
+          },
+          "required": ["title"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Init_id": {
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [ { "name": "caseId", "type": "String", "value": "@{concat('CASE-', formatDateTime(utcNow(),'yyyy'), '-', substring(replace(guid(),'-',''),0,6))}" } ]
+      }
+    },
+    "Init_doc": {
+      "type": "InitializeVariable",
+      "runAfter": { "Init_id": [ "Succeeded" ] },
+      "inputs": {
+        "variables": [ {
+          "name": "doc",
+          "type": "Object",
+          "value": {
+            "id":       "@variables('caseId')",
+            "title":    "@triggerBody()?['title']",
+            "status":   "Open",
+            "priority": "@coalesce(triggerBody()?['priority'], 'Medium')",
+            "analyst":  "@coalesce(triggerBody()?['analyst'], 'Analyst')",
+            "count":    0,
+            "created":  "@utcNow()",
+            "updated":  "@utcNow()"
+          }
+        } ]
+      }
+    },
+    "Insert_case": {
+      "type": "ApiConnection",
+      "runAfter": { "Init_doc": [ "Succeeded" ] },
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "method": "post",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('cases')}/docs",
+        "headers": { "x-ms-documentdb-raw-partitionkey": "[\"@{variables('caseId')}\"]" },
+        "body": "@variables('doc')"
+      }
+    },
+    "Audit": {
+      "type": "ApiConnection",
+      "runAfter": { "Insert_case": [ "Succeeded" ] },
+      "inputs": {
+        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "method": "post",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
+        "headers": { "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}\"]" },
+        "body": {
+          "id":     "@{guid()}",
+          "action": "CREATE",
+          "user":   "@{coalesce(triggerBody()?['user'], 'analyst@threatvault.com')}",
+          "res":    "@variables('caseId')",
+          "ip":     "—",
+          "ts":     "@utcNow()"
+        }
+      }
+    },
+    "Response": {
+      "type": "Response", "kind": "Http",
+      "runAfter": { "Audit": [ "Succeeded", "Failed" ] },
+      "inputs": {
+        "statusCode": 201,
+        "headers": { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        "body": { "case": "@variables('doc')" }
+      }
+    }
+  },
+  "outputs": {}
+}

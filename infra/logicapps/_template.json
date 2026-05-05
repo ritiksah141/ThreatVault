@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workflowName":  { "type": "string" },
+    "location":      { "type": "string" },
+    "cosmosConnId":  { "type": "string" },
+    "blobConnId":    { "type": "string" },
+    "definition":    { "type": "object" }
+  },
+  "variables": {
+    "documentdbApi": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/documentdb')]",
+    "azureblobApi":  "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/azureblob')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[parameters('workflowName')]",
+      "location": "[parameters('location')]",
+      "tags": { "project": "ThreatVault", "module": "COM682" },
+      "properties": {
+        "state": "Enabled",
+        "definition": "[parameters('definition')]",
+        "parameters": {
+          "$connections": {
+            "value": {
+              "documentdb": {
+                "connectionId":   "[parameters('cosmosConnId')]",
+                "connectionName": "conn-cosmos",
+                "id":             "[variables('documentdbApi')]"
+              },
+              "azureblob": {
+                "connectionId":   "[parameters('blobConnId')]",
+                "connectionName": "conn-blob",
+                "id":             "[variables('azureblobApi')]"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "callbackUrl": {
+      "type": "string",
+      "value": "[listCallbackURL(concat(resourceId('Microsoft.Logic/workflows', parameters('workflowName')), '/triggers/manual'), '2019-05-01').value]"
+    }
+  }
+}

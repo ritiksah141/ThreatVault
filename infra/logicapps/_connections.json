@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location":          { "type": "string" },
+    "cosmosName":        { "type": "string" },
+    "cosmosKey":         { "type": "securestring" },
+    "storageName":       { "type": "string" },
+    "storageKey":        { "type": "securestring" },
+    "connCosmos":        { "type": "string", "defaultValue": "conn-cosmos" },
+    "connBlob":          { "type": "string", "defaultValue": "conn-blob" }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/connections",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('connCosmos')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "displayName": "[parameters('connCosmos')]",
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/documentdb')]"
+        },
+        "parameterValues": {
+          "databaseAccount": "[parameters('cosmosName')]",
+          "accessKey":       "[parameters('cosmosKey')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Web/connections",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('connBlob')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "displayName": "[parameters('connBlob')]",
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/azureblob')]"
+        },
+        "parameterValues": {
+          "accountName": "[parameters('storageName')]",
+          "accessKey":   "[parameters('storageKey')]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "cosmosConnId": { "type": "string", "value": "[resourceId('Microsoft.Web/connections', parameters('connCosmos'))]" },
+    "blobConnId":   { "type": "string", "value": "[resourceId('Microsoft.Web/connections', parameters('connBlob'))]"   }
+  }
+}

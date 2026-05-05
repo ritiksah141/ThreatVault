@@ -1,0 +1,44 @@
+# OS
+.DS_Store
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Credentials and keys
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+*.kdb
+*.kdbx
+*.crt
+*.cer
+*.der
+
+# Cloud service account files
+**/service-account*.json
+**/gcloud*.json
+
+# Logs
+*.log
+
+# Python
+.venv/
+__pycache__/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Infrastructure state
+infra/.state.*
+infra/.tmp_url
+
+# Secret scanning artifacts
+.detect-secrets/
