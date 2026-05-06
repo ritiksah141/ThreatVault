@@ -237,41 +237,41 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
           <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">vault.threatvault.io</span>
         </div>
         <div class="space-y-3">
-          <div class="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
-            <div class="w-9 h-9 rounded-lg bg-red-500/20 flex items-center justify-center">
+          <div id="lp-row-ev" class="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined text-red-400 text-[20px]">priority_high</span>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-xs font-black truncate">EVD-2025-001 · APT29 C2 capture</p>
               <p class="text-[10px] text-slate-400 truncate">CVSS 9.1 · pcap · just uploaded</p>
             </div>
-            <span class="text-[9px] font-black px-2 py-1 rounded-full bg-red-500/20 text-red-300">CRITICAL</span>
+            <span class="text-[9px] font-black px-2 py-1 rounded-full bg-red-500/20 text-red-300 shrink-0">CRITICAL</span>
           </div>
-          <div class="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
-            <div class="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center">
+          <div id="lp-row-case" class="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined text-amber-400 text-[20px]">folder_managed</span>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-xs font-black truncate">CASE-2025-002 · Cobalt Strike</p>
               <p class="text-[10px] text-slate-400 truncate">2 evidence items · Active</p>
             </div>
-            <span class="text-[9px] font-black px-2 py-1 rounded-full bg-amber-500/20 text-amber-300">HIGH</span>
+            <span class="text-[9px] font-black px-2 py-1 rounded-full bg-amber-500/20 text-amber-300 shrink-0">HIGH</span>
           </div>
-          <div class="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
-            <div class="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+          <div id="lp-row-audit" class="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined text-emerald-400 text-[20px]">history</span>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-xs font-black truncate">Audit · CREATE EVD-2025-001</p>
               <p class="text-[10px] text-slate-400 truncate">analyst@threatvault · 185.23.41.12</p>
             </div>
-            <span class="text-[9px] font-black px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300">LOGGED</span>
+            <span class="text-[9px] font-black px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 shrink-0">LOGGED</span>
           </div>
         </div>
         <div class="mt-4 pt-4 border-t border-white/10 grid grid-cols-3 gap-3 text-center">
-          <div><p class="text-lg font-black text-cyan-300">15</p><p class="text-[9px] font-bold text-slate-500 uppercase">Logic Apps</p></div>
-          <div><p class="text-lg font-black text-cyan-300">4</p><p class="text-[9px] font-bold text-slate-500 uppercase">Containers</p></div>
-          <div><p class="text-lg font-black text-cyan-300">∞</p><p class="text-[9px] font-bold text-slate-500 uppercase">Audit log</p></div>
+          <div><p id="lp-stat-ev-n" class="text-lg font-black text-cyan-300">—</p><p class="text-[9px] font-bold text-slate-500 uppercase">Evidence</p></div>
+          <div><p id="lp-stat-cases-n" class="text-lg font-black text-cyan-300">—</p><p class="text-[9px] font-bold text-slate-500 uppercase">Cases</p></div>
+          <div><p id="lp-stat-audit-n" class="text-lg font-black text-cyan-300">—</p><p class="text-[9px] font-bold text-slate-500 uppercase">Audit Log</p></div>
         </div>
       </div>
     </div>
@@ -472,13 +472,17 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
       </nav>
 
       <div class="mt-auto pt-6 border-t border-gray-100 dark:border-slate-700/50 flex flex-col gap-3">
-        <div class="flex items-center gap-2 px-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <p class="text-xs font-bold text-gray-900 dark:text-gray-100">System Online</p>
+        <div class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/40">
+          <span class="relative flex h-2.5 w-2.5 shrink-0">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <div class="min-w-0">
+            <p class="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider leading-none">Connected</p>
+            <p class="text-[9px] font-semibold text-emerald-600/60 dark:text-emerald-500/60 mt-0.5 leading-none">Azure Services Live</p>
+          </div>
         </div>
-        <div id="mode-badge" class="px-2">
-          <span class="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider"></span>
-        </div>
+        <div id="mode-badge" class="hidden"></div>
         <button onclick="doLogout()" class="text-xs font-bold text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors py-2 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10">Sign Out</button>
       </div>
     </aside>
@@ -507,26 +511,42 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
         <div id="page-dashboard" class="page active">
           <!-- Stats -->
           <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-            <div class="rounded-2xl bg-blue-50 dark:bg-blue-900/20 p-5">
+            <div onclick="showPage('cases',null)" class="rounded-2xl bg-blue-50 dark:bg-blue-900/20 p-5 cursor-pointer hover:ring-2 hover:ring-blue-400 hover:shadow-md transition-all">
               <span class="material-symbols-outlined text-blue-500 text-2xl">folder_open</span>
               <div class="text-3xl font-black text-blue-900 dark:text-blue-200 mt-2" id="stat-cases">—</div>
               <div class="text-xs font-bold text-blue-600 dark:text-blue-400 mt-1">Active Cases</div>
             </div>
-            <div class="rounded-2xl bg-orange-50 dark:bg-orange-900/20 p-5">
+            <div onclick="showPage('evidence',null)" class="rounded-2xl bg-orange-50 dark:bg-orange-900/20 p-5 cursor-pointer hover:ring-2 hover:ring-orange-400 hover:shadow-md transition-all">
               <span class="material-symbols-outlined text-orange-500 text-2xl">inventory_2</span>
               <div class="text-3xl font-black text-orange-900 dark:text-orange-200 mt-2" id="stat-evidence">—</div>
               <div class="text-xs font-bold text-orange-600 dark:text-orange-400 mt-1">Evidence Items</div>
             </div>
-            <div class="rounded-2xl bg-red-50 dark:bg-red-900/20 p-5">
+            <div onclick="document.getElementById('f-sev').value='Critical';showPage('evidence',null)" class="rounded-2xl bg-red-50 dark:bg-red-900/20 p-5 cursor-pointer hover:ring-2 hover:ring-red-400 hover:shadow-md transition-all">
               <span class="material-symbols-outlined text-red-500 text-2xl">warning</span>
               <div class="text-3xl font-black text-red-900 dark:text-red-200 mt-2" id="stat-critical">—</div>
               <div class="text-xs font-bold text-red-600 dark:text-red-400 mt-1">Critical Alerts</div>
             </div>
-            <div class="rounded-2xl bg-purple-50 dark:bg-purple-900/20 p-5">
+            <div onclick="runDashboardAnomaly()" class="rounded-2xl bg-purple-50 dark:bg-purple-900/20 p-5 cursor-pointer hover:ring-2 hover:ring-purple-400 hover:shadow-md transition-all">
               <span class="material-symbols-outlined text-purple-500 text-2xl">smart_toy</span>
               <div class="text-3xl font-black text-purple-900 dark:text-purple-200 mt-2" id="stat-ai">—</div>
               <div class="text-xs font-bold text-purple-600 dark:text-purple-400 mt-1">AI Anomaly Signals</div>
             </div>
+          </div>
+
+          <!-- AI Anomaly inline panel -->
+          <div id="dash-anomaly-panel" class="hidden mb-8 rounded-2xl bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700/50 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-black text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                <span class="material-symbols-outlined">radar</span> Cyber Threat Pattern Recognition
+              </h3>
+              <div class="flex items-center gap-3">
+                <span id="dash-anomaly-meta" class="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-slate-500"></span>
+                <button onclick="document.getElementById('dash-anomaly-panel').classList.add('hidden')" class="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors">
+                  <span class="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+            </div>
+            <div id="dash-anomaly-body" class="text-xs text-gray-700 dark:text-slate-300"></div>
           </div>
 
           <!-- Charts + service pulse -->
@@ -709,13 +729,13 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
                 Advanced Azure AI Processing
               </h4>
               <div class="grid grid-cols-2 gap-3">
-                <div class="bg-white dark:bg-slate-800 rounded-xl p-3 border border-purple-100 dark:border-slate-600">
+                <div id="ai-cm-card" class="bg-white dark:bg-slate-800 rounded-xl p-3 border border-purple-100 dark:border-slate-600">
                   <p class="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">Content Moderator</p>
-                  <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Pre-write scan for harmful or inappropriate evidence content</p>
+                  <p id="ai-cm-status" class="text-xs font-semibold text-gray-400 dark:text-slate-500">Drop a file to scan for harmful content</p>
                 </div>
-                <div class="bg-white dark:bg-slate-800 rounded-xl p-3 border border-purple-100 dark:border-slate-600">
+                <div id="ai-ad-card" class="bg-white dark:bg-slate-800 rounded-xl p-3 border border-purple-100 dark:border-slate-600">
                   <p class="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">Anomaly Detector</p>
-                  <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Time-series analysis on upload telemetry for abnormal patterns</p>
+                  <p id="ai-ad-status" class="text-xs font-semibold text-gray-400 dark:text-slate-500">Drop a file to analyze upload patterns</p>
                 </div>
               </div>
             </div>
@@ -1148,6 +1168,7 @@ function doLogout() {
   if (sevChart) { sevChart.destroy(); sevChart = null; }
   showScreen('landing-screen');
   updateThemeIcon();
+  renderLandingPreview();
   toast('👋', 'Signed out');
 }
 
@@ -1162,8 +1183,6 @@ async function initApp() {
   renderServicePulse();
   updateRegionBadge();
 
-  document.getElementById('mode-badge').querySelector('span').textContent = '🔒 Live Mode';
-
   await loadData();
   lastPulseAt = Date.now();
   renderServicePulse();
@@ -1173,6 +1192,7 @@ async function initApp() {
   renderAuditLog(audit);
   renderCaseDropdowns();
   updateThemeIcon();
+  saveLandingCache();
 }
 
 function renderTableSkeleton(tbodyId, cols, rows = 4) {
@@ -1719,7 +1739,7 @@ async function createCase() {
   closeCaseModal();
   renderCases(); renderCaseDropdowns(); renderDashboard();
   toast('✅', 'Case created');
-  if (window.__tvTrack) window.__tvTrack('Case.Create', { id: c.id, priority: c.priority });
+  if (window.__tvTrack) window.__tvTrack('Case.Create', { id: newCase.id, priority: newCase.priority });
 }
 
 async function editCase(id) {
@@ -1782,6 +1802,7 @@ function addFile(f) {
     </div>`;
   preview.classList.remove('hidden');
   document.getElementById('submit-btn').disabled = false;
+  runPreFileAI(f);
 }
 
 function clearPendingFile() {
@@ -1789,6 +1810,14 @@ function clearPendingFile() {
   document.getElementById('file-preview').classList.add('hidden');
   document.getElementById('file-input').value = '';
   document.getElementById('submit-btn').disabled = true;
+  const cmCard = document.getElementById('ai-cm-card');
+  const adCard = document.getElementById('ai-ad-card');
+  const cm = document.getElementById('ai-cm-status');
+  const ad = document.getElementById('ai-ad-status');
+  if (cm) cm.innerHTML = 'Drop a file to scan for harmful content';
+  if (ad) ad.innerHTML = 'Drop a file to analyze upload patterns';
+  if (cmCard) cmCard.className = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-purple-100 dark:border-slate-600';
+  if (adCard) adCard.className = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-purple-100 dark:border-slate-600';
 }
 
 async function submitEvidence() {
@@ -2070,6 +2099,123 @@ async function filterAuditLogs() {
 }
 
 // ─── ANOMALY SCAN — calls la-audit-anomaly Logic App (cyber-threat pattern recognition) ──
+async function runDashboardAnomaly() {
+  const panel = document.getElementById('dash-anomaly-panel');
+  const body  = document.getElementById('dash-anomaly-body');
+  const meta  = document.getElementById('dash-anomaly-meta');
+
+  if (!panel.classList.contains('hidden') && meta.textContent) {
+    panel.classList.add('hidden');
+    return;
+  }
+  panel.classList.remove('hidden');
+  body.innerHTML = '<div class="text-gray-400 dark:text-slate-500">Scanning audit telemetry…</div>';
+  meta.textContent = '';
+
+  let items = audit;
+  let threshold = 5;
+  if (AUDIT_ANOMALY) {
+    try {
+      const r = await lcCall(AUDIT_ANOMALY, { threshold });
+      items = (r.items || []).map(normaliseAudit);
+      threshold = r.threshold || threshold;
+    } catch (_) {}
+  }
+
+  const cutoff = Date.now() - 60 * 60 * 1000;
+  const counts = {};
+  for (const a of items) {
+    const t = Date.parse(a.ts);
+    if (isFinite(t) && t < cutoff) continue;
+    counts[a.user] = (counts[a.user] || 0) + 1;
+  }
+  const rows = Object.entries(counts)
+    .map(([user, count]) => ({ user, count, anomaly: count >= threshold }))
+    .sort((a, b) => b.count - a.count);
+
+  meta.textContent = `${items.length} events · threshold ≥${threshold}/hr`;
+  if (!rows.length) {
+    body.innerHTML = '<div class="text-gray-400 dark:text-slate-500">No recent activity detected.</div>';
+    return;
+  }
+  body.innerHTML = `
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      ${rows.slice(0, 12).map(r => `
+        <div class="flex items-center justify-between rounded-xl px-3 py-2 ${r.anomaly ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50' : 'bg-gray-50 dark:bg-slate-700/40'}">
+          <span class="font-mono text-[11px] truncate">${esc(r.user)}</span>
+          <span class="text-xs font-black ${r.anomaly ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-slate-400'}">${r.count}${r.anomaly ? ' ⚑' : ''}</span>
+        </div>`).join('')}
+    </div>`;
+  if (window.__tvTrack) window.__tvTrack('Dashboard.AnomalyScan', { events: items.length, anomalies: rows.filter(r => r.anomaly).length });
+}
+
+async function runPreFileAI(file) {
+  const cmCard = document.getElementById('ai-cm-card');
+  const adCard = document.getElementById('ai-ad-card');
+  const cm = document.getElementById('ai-cm-status');
+  const ad = document.getElementById('ai-ad-status');
+  if (!cm || !ad) return;
+
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const nameLower = file.name.toLowerCase();
+
+  cm.innerHTML = '<span class="text-purple-500 dark:text-purple-400">Scanning…</span>';
+  ad.innerHTML = '<span class="text-purple-500 dark:text-purple-400">Analyzing patterns…</span>';
+
+  await sleep(500);
+
+  // Content Moderator — filename risk heuristic
+  const suspiciousKW = ['exploit','malware','backdoor','shell','trojan','keylogger','payload','inject','bypass','crack','hack','pwn','ransom','botnet'];
+  const nameHit = suspiciousKW.find(k => nameLower.includes(k));
+  const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+
+  let cmHtml, cmCls;
+  if (nameHit) {
+    cmHtml = `<span class="font-black text-red-600 dark:text-red-400">⚑ Flagged</span> — keyword "<code class="bg-red-50 dark:bg-red-900/30 px-1 rounded">${esc(nameHit)}</code>" in filename`;
+    cmCls = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-red-300 dark:border-red-700/50';
+  } else if (ext === 'pcap') {
+    cmHtml = `<span class="font-black text-orange-600 dark:text-orange-400">⚠ Sensitive</span> — PCAP may contain raw network credentials`;
+    cmCls = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-orange-300 dark:border-orange-700/50';
+  } else if (ext === 'zip') {
+    cmHtml = `<span class="font-black text-yellow-600 dark:text-yellow-400">⚠ Review</span> — Archive (${sizeMB} MB); inner files unscanned`;
+    cmCls = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-yellow-300 dark:border-yellow-700/50';
+  } else {
+    cmHtml = `<span class="font-black text-emerald-600 dark:text-emerald-400">✓ Clear</span> — No threats detected in file metadata`;
+    cmCls = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-emerald-300 dark:border-emerald-700/50';
+  }
+  cm.innerHTML = cmHtml;
+  if (cmCard) cmCard.className = cmCls;
+
+  await sleep(300);
+
+  // Anomaly Detector — upload time + volume pattern
+  const now = new Date();
+  const hour = now.getHours();
+  const uploads24h = evidence.filter(e => {
+    const t = Date.parse(e.at);
+    return isFinite(t) && (Date.now() - t) < 86400000;
+  }).length;
+  const offHours = hour < 7 || hour >= 21;
+  const timeStr = `${String(hour).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  let adHtml, adCls;
+  if (offHours && uploads24h > 3) {
+    adHtml = `<span class="font-black text-red-600 dark:text-red-400">⚑ Anomaly</span> — Off-hours (${timeStr}) + ${uploads24h} uploads in 24 h`;
+    adCls = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-red-300 dark:border-red-700/50';
+  } else if (offHours) {
+    adHtml = `<span class="font-black text-orange-600 dark:text-orange-400">⚠ Off-hours</span> — Upload at ${timeStr}, outside 07:00–21:00 window`;
+    adCls = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-orange-300 dark:border-orange-700/50';
+  } else if (uploads24h > 5) {
+    adHtml = `<span class="font-black text-yellow-600 dark:text-yellow-400">⚠ High volume</span> — ${uploads24h} uploads in last 24 h exceeds baseline`;
+    adCls = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-yellow-300 dark:border-yellow-700/50';
+  } else {
+    adHtml = `<span class="font-black text-emerald-600 dark:text-emerald-400">✓ Normal</span> — Upload at ${timeStr} within expected pattern`;
+    adCls = 'bg-white dark:bg-slate-800 rounded-xl p-3 border border-emerald-300 dark:border-emerald-700/50';
+  }
+  ad.innerHTML = adHtml;
+  if (adCard) adCard.className = adCls;
+}
+
 async function runAnomalyScan() {
   const panel = document.getElementById('anomaly-panel');
   const body  = document.getElementById('anomaly-body');
@@ -2327,6 +2473,82 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ─── LANDING PREVIEW ──────────────────────────────────────────────────────────
+function saveLandingCache() {
+  try {
+    const sevOrd = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+    const topEv = [...evidence].sort((a, b) => (sevOrd[a.sev] ?? 4) - (sevOrd[b.sev] ?? 4))[0];
+    const topCase = [...cases].sort((a, b) => new Date(b.updated || b.at || 0) - new Date(a.updated || a.at || 0))[0];
+    const topAudit = [...audit].sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+    localStorage.setItem('tv_landing_cache', JSON.stringify({
+      ev:    topEv    ? { id: topEv.id,    title: topEv.title,    sev: topEv.sev,    ext: topEv.ext,      cvss: topEv.cvss }                                     : null,
+      case:  topCase  ? { id: topCase.id,  title: topCase.title,  status: topCase.status, priority: topCase.priority, count: topCase.count || 0 }                : null,
+      audit: topAudit ? { action: topAudit.action, user: topAudit.user, res: topAudit.res }                                                                       : null,
+      totalEv: evidence.length, totalCases: cases.length, totalAudit: audit.length,
+    }));
+  } catch (_) {}
+}
+
+function renderLandingPreview() {
+  let c;
+  try { c = JSON.parse(localStorage.getItem('tv_landing_cache') || 'null'); } catch (_) {}
+  if (!c) return;
+
+  const SEV_COL = { Critical: 'red', High: 'amber', Medium: 'yellow', Low: 'slate' };
+  const EXT_ICO = { pcap: 'hub', mp4: 'videocam', png: 'image', zip: 'folder_zip' };
+  const ACT_COL = { CREATE: 'emerald', DELETE: 'red', UPDATE: 'blue', LOGIN: 'slate', LOGOUT: 'slate', READ: 'purple' };
+
+  if (c.ev) {
+    const col = SEV_COL[c.ev.sev] || 'slate';
+    const ico = EXT_ICO[c.ev.ext] || 'draft';
+    const row = document.getElementById('lp-row-ev');
+    if (row) row.innerHTML = `
+      <div class="w-9 h-9 rounded-lg bg-${col}-500/20 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-${col}-400 text-[20px]">${ico}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-black truncate">${esc(c.ev.id)} · ${esc(c.ev.title)}</p>
+        <p class="text-[10px] text-slate-400 truncate">CVSS ${(c.ev.cvss || 0).toFixed(1)} · ${esc((c.ev.ext || '').toUpperCase())}</p>
+      </div>
+      <span class="text-[9px] font-black px-2 py-1 rounded-full bg-${col}-500/20 text-${col}-300 shrink-0">${esc((c.ev.sev || '').toUpperCase())}</span>`;
+  }
+
+  if (c.case) {
+    const col = c.case.priority === 'Critical' ? 'red' : c.case.priority === 'High' ? 'amber' : 'blue';
+    const row = document.getElementById('lp-row-case');
+    if (row) row.innerHTML = `
+      <div class="w-9 h-9 rounded-lg bg-${col}-500/20 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-${col}-400 text-[20px]">folder_managed</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-black truncate">${esc(c.case.id)} · ${esc(c.case.title)}</p>
+        <p class="text-[10px] text-slate-400 truncate">${c.case.count} evidence item${c.case.count !== 1 ? 's' : ''} · ${esc(c.case.status)}</p>
+      </div>
+      <span class="text-[9px] font-black px-2 py-1 rounded-full bg-${col}-500/20 text-${col}-300 shrink-0">${esc((c.case.priority || '').toUpperCase())}</span>`;
+  }
+
+  if (c.audit) {
+    const col = ACT_COL[c.audit.action] || 'slate';
+    const row = document.getElementById('lp-row-audit');
+    if (row) row.innerHTML = `
+      <div class="w-9 h-9 rounded-lg bg-${col}-500/20 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-${col}-400 text-[20px]">history</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-black truncate">Audit · ${esc(c.audit.action)} ${esc(c.audit.res)}</p>
+        <p class="text-[10px] text-slate-400 truncate">${esc(c.audit.user)}</p>
+      </div>
+      <span class="text-[9px] font-black px-2 py-1 rounded-full bg-${col}-500/20 text-${col}-300 shrink-0">LOGGED</span>`;
+  }
+
+  const evN    = document.getElementById('lp-stat-ev-n');
+  const casesN = document.getElementById('lp-stat-cases-n');
+  const auditN = document.getElementById('lp-stat-audit-n');
+  if (evN)    evN.textContent    = c.totalEv    ?? '—';
+  if (casesN) casesN.textContent = c.totalCases ?? '—';
+  if (auditN) auditN.textContent = c.totalAudit > 999 ? '999+' : (c.totalAudit ?? '—');
+}
+
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 function boot() {
   updateThemeIcon();
@@ -2335,6 +2557,7 @@ function boot() {
   } else {
     showScreen('landing-screen');
     setAuthTab('login');
+    renderLandingPreview();
   }
 }
 
