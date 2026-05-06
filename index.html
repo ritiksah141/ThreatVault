@@ -1318,8 +1318,41 @@ async function lcCall(url, payload) {
 function sasDownloadUrl(e) {
   const s = (CFG.storage || {});
   if (!s.blobEndpoint || !s.evidenceSas || !e) return '';
-  const path = (e.blobPath || `evidence/${e.id}.json`).replace(/^\/+/, '');
+  const path = (e.blobPath || `evidence/${e.id}.${e.ext || 'bin'}`).replace(/^\/+/, '');
   return `${s.blobEndpoint}${path}?${s.evidenceSas}`;
+}
+
+// Direct PUT of raw bytes to the private container using a write-scoped SAS.
+// Used during evidence submission so the actual file lands in blob (not just
+// a metadata doc in Cosmos). Returns the blob path on success, throws on failure.
+async function putBlobWithSas(blobPath, file) {
+  const s = (CFG.storage || {});
+  if (!s.blobEndpoint || !s.evidenceSasWrite) throw new Error('write SAS not configured');
+  const url = `${s.blobEndpoint}${blobPath.replace(/^\/+/, '')}?${s.evidenceSasWrite}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'x-ms-blob-type': 'BlockBlob',
+      'Content-Type':   file.type || 'application/octet-stream'
+    },
+    body: file
+  });
+  if (!res.ok) throw new Error(`blob PUT failed: ${res.status} ${res.statusText}`);
+  return blobPath;
+}
+
+// In-card / modal media renderer. PNG → <img>, MP4 → <video controls>.
+// Falls back to the typed icon for everything else (PCAP, ZIP, …).
+function evMediaTile(e, sizeClass) {
+  const url = sasDownloadUrl(e);
+  const ext = (e.ext || '').toLowerCase();
+  if (url && ext === 'png') {
+    return `<img src="${url}" alt="${esc(e.title)}" class="${sizeClass} object-cover" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'material-symbols-outlined text-5xl ' + '${typeColour(ext)}' + ' opacity-30',innerText:'${typeIcon(ext)}'}))">`;
+  }
+  if (url && ext === 'mp4') {
+    return `<video src="${url}" controls preload="metadata" class="${sizeClass} object-cover bg-black"></video>`;
+  }
+  return `<span class="material-symbols-outlined text-5xl ${typeColour(ext)} opacity-30 group-hover:opacity-50 transition-opacity group-hover:scale-110 duration-300">${typeIcon(ext)}</span>`;
 }
 
 // ─── RENDER NAV ──────────────────────────────────────────────────────────────
@@ -1575,11 +1608,11 @@ function renderEvidence(items) {
 
   host.innerHTML = items.map(e => `
     <article class="group rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 overflow-hidden hover:shadow-lg dark:hover:shadow-slate-900 transition-all cursor-pointer" onclick="openEvModal('${esc(e.id)}')">
-      <div class="relative h-40 ${cardBg(e.ext)} flex items-center justify-center">
-        ${e.flagged ? `<div class="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full">⚑ FLAGGED</div>` : ''}
-        <div class="absolute top-3 right-3">${sevPill(e.sev)}</div>
-        <span class="material-symbols-outlined text-5xl ${typeColour(e.ext)} opacity-30 group-hover:opacity-50 transition-opacity group-hover:scale-110 duration-300">${typeIcon(e.ext)}</span>
-        <div class="absolute bottom-3 left-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-black text-gray-700 dark:text-slate-300">${e.ext.toUpperCase()}</div>
+      <div class="relative h-40 ${cardBg(e.ext)} flex items-center justify-center overflow-hidden">
+        ${e.flagged ? `<div class="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full z-10">⚑ FLAGGED</div>` : ''}
+        <div class="absolute top-3 right-3 z-10">${sevPill(e.sev)}</div>
+        ${evMediaTile(e, 'absolute inset-0 w-full h-full')}
+        <div class="absolute bottom-3 left-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-black text-gray-700 dark:text-slate-300 z-10">${e.ext.toUpperCase()}</div>
       </div>
       <div class="p-4">
         <h3 class="font-black text-sm text-gray-900 dark:text-slate-100 truncate">${esc(e.title)}</h3>
@@ -1799,6 +1832,18 @@ async function submitEvidence() {
           sha256
         });
         const ev = normaliseEv(r.evidence || r);
+        // Push the actual file bytes to private blob storage using the
+        // write-scoped SAS. Doc already references this path, so the
+        // upload completes the link. Failure here is non-fatal — the
+        // metadata still exists, just without the binary.
+        if (ev.blobPath && CFG.storage?.evidenceSasWrite) {
+          try {
+            await putBlobWithSas(ev.blobPath, pendingFile);
+          } catch (err) {
+            console.warn('blob upload failed', err);
+            toast('⚠️', 'Metadata saved, but blob upload failed — preview unavailable');
+          }
+        }
         evidence.unshift(ev);
       } catch (_) {
         evidence.unshift(normaliseEv({ id: newId, title, caseID, ext, cvss, sha256, by: user?.name || 'Analyst', at: new Date().toISOString(), notes:'', tags:[] }));
@@ -1884,10 +1929,10 @@ function openEvModal(id) {
   if (!e) return;
 
   document.getElementById('ev-modal-body').innerHTML = `
-    <div class="relative h-48 ${cardBg(e.ext)} rounded-t-3xl flex items-center justify-center overflow-hidden">
-      ${e.flagged ? `<div class="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full">⚑ AI FLAGGED — Content Moderator</div>` : ''}
-      <div class="absolute top-4 right-12">${sevPill(e.sev)}</div>
-      <span class="material-symbols-outlined text-7xl ${typeColour(e.ext)} opacity-20">${typeIcon(e.ext)}</span>
+    <div class="relative h-64 ${cardBg(e.ext)} rounded-t-3xl flex items-center justify-center overflow-hidden">
+      ${e.flagged ? `<div class="absolute top-4 left-4 z-10 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full">⚑ AI FLAGGED — Content Moderator</div>` : ''}
+      <div class="absolute top-4 right-12 z-10">${sevPill(e.sev)}</div>
+      ${evMediaTile(e, 'absolute inset-0 w-full h-full')}
     </div>
     <div class="p-6 space-y-5">
       <div>

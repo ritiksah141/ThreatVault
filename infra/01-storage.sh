@@ -29,7 +29,28 @@ SAS_TOKEN="$(az storage container generate-sas \
   --account-name "$STORAGE_NAME" --account-key "$KEY" \
   -n "$EVIDENCE_CONTAINER" \
   --permissions r --expiry "$SAS_EXPIRY" --https-only -o tsv)"
-ok "SAS issued (expires $SAS_EXPIRY)"
+ok "Read SAS issued (expires $SAS_EXPIRY)"
+
+# Write SAS — used by the SPA to PUT raw evidence bytes directly to the container
+# (create + write only — no read, no list, no delete). Same 90-day expiry.
+SAS_WRITE_TOKEN="$(az storage container generate-sas \
+  --account-name "$STORAGE_NAME" --account-key "$KEY" \
+  -n "$EVIDENCE_CONTAINER" \
+  --permissions cw --expiry "$SAS_EXPIRY" --https-only -o tsv)"
+ok "Write SAS issued (cw, expires $SAS_EXPIRY)"
+
+# CORS — allow the static-site origin to PUT bytes and GET media previews
+# directly from blob storage. Without this, browser uploads/previews are blocked
+# by the CORS preflight. We allow * since the SAS itself is the gate.
+banner "Configuring CORS on blob service"
+az storage cors clear --account-name "$STORAGE_NAME" --account-key "$KEY" --services b >/dev/null
+az storage cors add --account-name "$STORAGE_NAME" --account-key "$KEY" --services b \
+  --methods GET PUT HEAD OPTIONS \
+  --origins '*' \
+  --allowed-headers '*' \
+  --exposed-headers '*' \
+  --max-age 3600 >/dev/null
+ok "CORS rules applied (GET/PUT/HEAD/OPTIONS, origin *)"
 
 BLOB_ENDPOINT="$(az storage account show -n "$STORAGE_NAME" -g "$RG_NAME" --query primaryEndpoints.blob -o tsv)"
 
@@ -40,6 +61,7 @@ STATE="$SCRIPT_DIR/.state"
   echo "STORAGE_KEY=$KEY"
   echo "BLOB_ENDPOINT=$BLOB_ENDPOINT"
   echo "EVIDENCE_SAS=$SAS_TOKEN"
+  echo "EVIDENCE_SAS_WRITE=$SAS_WRITE_TOKEN"
   echo "EVIDENCE_SAS_EXPIRY=$SAS_EXPIRY"
 } >"$STATE.storage"
 ok "Wrote $STATE.storage"

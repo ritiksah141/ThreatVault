@@ -7,9 +7,10 @@ window.__TV_CONFIG__ = {
     appInsightsConnectionString: "InstrumentationKey=8dd3c5d4-9381-454b-978f-55032804643f;IngestionEndpoint=https://italynorth-0.in.applicationinsights.azure.com/;LiveEndpoint=https://italynorth.livediagnostics.monitor.azure.com/;ApplicationId=b669be7b-2301-4539-83cc-2ce44b5254dc"
   },
   storage:    {
-    blobEndpoint:    "https://sttv5fb957.blob.core.windows.net/",
+    blobEndpoint:      "https://sttv5fb957.blob.core.windows.net/",
     evidenceContainer: "evidence",
-    evidenceSas:     "se=2026-08-04T03%3A33Z&sp=r&spr=https&sv=2026-02-06&sr=c&sig=vzcfoCG9ZX/QtadfHOnWG4rqxCwic0%2BlBQVnVshHOKU%3D"
+    evidenceSas:       "se=2026-08-04T04%3A55Z&sp=r&spr=https&sv=2026-02-06&sr=c&sig=eJ2D08wTs7WcJsMKfVua7/WsoBKFunxTJLSxAB4KcMw%3D",
+    evidenceSasWrite:  "se=2026-08-04T04%3A55Z&sp=cw&spr=https&sv=2026-02-06&sr=c&sig=mhUzUNwcIrpBDq33Jzb/gdLy4JgW9EHQ221c%2BVGZv7o%3D"
   },
   endpoints:  {
   "evidenceList": "https://prod-05.italynorth.logic.azure.com:443/workflows/d45000f1c4f44d6d9ca365344c881a02/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lzHuqD65uSdAsHVFL6IIcp5iINqVJx9jZKRl7yFIrVo",

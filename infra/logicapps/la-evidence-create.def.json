@@ -52,31 +52,15 @@
             "sha256":     "@coalesce(json(triggerBody())?['sha256'], '')",
             "uploadedBy": "@coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')",
             "uploadedAt": "@utcNow()",
-            "blobPath":   "@{concat('evidence/', variables('evid'), '.json')}",
+            "blobPath":   "@{concat('evidence/', variables('evid'), '.', coalesce(json(triggerBody())?['ext'], 'bin'))}",
             "tags":       []
           }
         } ]
       }
     },
-    "Write_blob_manifest": {
-      "type": "ApiConnection",
-      "runAfter": { "Init_doc": [ "Succeeded" ] },
-      "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['azureblob']['connectionId']" } },
-        "method": "post",
-        "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files",
-        "queries": {
-          "folderPath": "/evidence",
-          "name": "@{concat(variables('evid'), '.json')}",
-          "queryParametersSingleEncoded": true
-        },
-        "headers": { "Content-Type": "application/json", "ReadFileMetadataFromServer": true },
-        "body": "@variables('doc')"
-      }
-    },
     "Insert_cosmos": {
       "type": "ApiConnection",
-      "runAfter": { "Write_blob_manifest": [ "Succeeded", "Failed", "Skipped" ] },
+      "runAfter": { "Init_doc": [ "Succeeded" ] },
       "inputs": {
         "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
         "method": "post",
