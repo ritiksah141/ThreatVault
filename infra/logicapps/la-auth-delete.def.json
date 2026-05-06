@@ -1,0 +1,174 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "type": "Object",
+      "defaultValue": {}
+    }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "passwordHash": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "email",
+            "passwordHash"
+          ]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Get_user": {
+      "type": "ApiConnection",
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
+        "method": "get",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('users')}/docs/@{encodeURIComponent(toLower(json(triggerBody())?['email']))}",
+        "headers": {
+          "x-ms-documentdb-partitionkey": "@{toLower(json(triggerBody())?['email'])}"
+        }
+      }
+    },
+    "Check_pw": {
+      "type": "If",
+      "runAfter": {
+        "Get_user": [
+          "Succeeded"
+        ]
+      },
+      "expression": {
+        "and": [
+          {
+            "equals": [
+              "@body('Get_user')?['passwordHash']",
+              "@json(triggerBody())?['passwordHash']"
+            ]
+          }
+        ]
+      },
+      "actions": {
+        "Delete_user": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['documentdb']['connectionId']"
+              }
+            },
+            "method": "delete",
+            "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('users')}/docs/@{encodeURIComponent(toLower(json(triggerBody())?['email']))}",
+            "headers": {
+              "x-ms-documentdb-partitionkey": "@{toLower(json(triggerBody())?['email'])}"
+            }
+          }
+        },
+        "Audit_delete": {
+          "type": "ApiConnection",
+          "runAfter": {
+            "Delete_user": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['documentdb']['connectionId']"
+              }
+            },
+            "method": "post",
+            "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
+            "headers": {
+              "x-ms-documentdb-raw-partitionkey": "[\"@{toLower(json(triggerBody())?['email'])}\"]"
+            },
+            "body": {
+              "id": "@{guid()}",
+              "action": "ACCOUNT_DELETE",
+              "user": "@{toLower(json(triggerBody())?['email'])}",
+              "res": "auth-service",
+              "ip": "\u2014",
+              "ts": "@utcNow()"
+            }
+          }
+        },
+        "Response_ok": {
+          "type": "Response",
+          "kind": "Http",
+          "runAfter": {
+            "Audit_delete": [
+              "Succeeded",
+              "Failed"
+            ]
+          },
+          "inputs": {
+            "statusCode": 200,
+            "headers": {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*"
+            },
+            "body": {
+              "ok": true
+            }
+          }
+        }
+      },
+      "else": {
+        "actions": {
+          "Response_bad_pw": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 200,
+              "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+              },
+              "body": {
+                "ok": false,
+                "error": "Wrong password"
+              }
+            }
+          }
+        }
+      }
+    },
+    "Response_no_user": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": {
+        "Get_user": [
+          "Failed"
+        ]
+      },
+      "inputs": {
+        "statusCode": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": {
+          "ok": false,
+          "error": "User not found"
+        }
+      }
+    }
+  },
+  "outputs": {}
+}

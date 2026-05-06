@@ -10,6 +10,8 @@ source "$SCRIPT_DIR/parameters.sh"
 ENDPOINTS="$(cat "$SCRIPT_DIR/.state.endpoints.json")"
 APPI_CONN="$(grep '^APPI_CONN=' "$SCRIPT_DIR/.state.monitor" 2>/dev/null | cut -d= -f2- || true)"
 SWA_HOST="$(grep '^SWA_HOST='   "$SCRIPT_DIR/.state.swa"     2>/dev/null | cut -d= -f2- || true)"
+BLOB_ENDPOINT="$(grep '^BLOB_ENDPOINT='  "$SCRIPT_DIR/.state.storage" 2>/dev/null | cut -d= -f2- || true)"
+EVIDENCE_SAS="$( grep '^EVIDENCE_SAS='   "$SCRIPT_DIR/.state.storage" 2>/dev/null | cut -d= -f2- || true)"
 
 OUT="$(cd "$SCRIPT_DIR/.." && pwd)/config.js"
 
@@ -21,6 +23,11 @@ window.__TV_CONFIG__ = {
   security:   { minPasswordLength: 8 },
   ops:        {
     appInsightsConnectionString: "$APPI_CONN"
+  },
+  storage:    {
+    blobEndpoint:    "$BLOB_ENDPOINT",
+    evidenceContainer: "$EVIDENCE_CONTAINER",
+    evidenceSas:     "$EVIDENCE_SAS"
   },
   endpoints:  $ENDPOINTS,
   swa:        { host: "$SWA_HOST" }

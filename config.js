@@ -6,6 +6,11 @@ window.__TV_CONFIG__ = {
   ops:        {
     appInsightsConnectionString: "InstrumentationKey=8dd3c5d4-9381-454b-978f-55032804643f;IngestionEndpoint=https://italynorth-0.in.applicationinsights.azure.com/;LiveEndpoint=https://italynorth.livediagnostics.monitor.azure.com/;ApplicationId=b669be7b-2301-4539-83cc-2ce44b5254dc"
   },
+  storage:    {
+    blobEndpoint:    "https://sttv5fb957.blob.core.windows.net/",
+    evidenceContainer: "evidence",
+    evidenceSas:     "se=2026-08-04T03%3A33Z&sp=r&spr=https&sv=2026-02-06&sr=c&sig=vzcfoCG9ZX/QtadfHOnWG4rqxCwic0%2BlBQVnVshHOKU%3D"
+  },
   endpoints:  {
   "evidenceList": "https://prod-05.italynorth.logic.azure.com:443/workflows/d45000f1c4f44d6d9ca365344c881a02/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lzHuqD65uSdAsHVFL6IIcp5iINqVJx9jZKRl7yFIrVo",
   "evidenceCreate": "https://prod-19.italynorth.logic.azure.com:443/workflows/bcbcdfb3128d470385a0c4532be8bacb/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=M2F7iYTsbo-_alyOKlLMiLq5_TSKMhZLu8hPl73jelY",
@@ -16,7 +21,14 @@ window.__TV_CONFIG__ = {
   "casesUpdate": "https://prod-05.italynorth.logic.azure.com:443/workflows/33443e6c670b4f208491f560a49aeec9/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=o75uc-2u5JOB-XW6m8TPj7SaWiUbFWWvRZb4BYDxK2Y",
   "casesDelete": "https://prod-17.italynorth.logic.azure.com:443/workflows/2ce92403f12140a58dc6a8da187a9023/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=oTKRFlx00ds6Yg27LXkx9mMD2xX8ar6X-UVzLH-N3_I",
   "auditList": "https://prod-24.italynorth.logic.azure.com:443/workflows/3d1daef7adf34c23b35d7bb76ab44f0e/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=ZbtDfTvtJf2Hn9vxoAFVpoltL3729WI7XkbwLlpCcGU",
-  "auditCreate": "https://prod-16.italynorth.logic.azure.com:443/workflows/3f0670a6e07c4f7f8f9da217869c802c/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=rbNzV6xJXrHFz9Nt5zd_79Fxg7By7DVY45UVanRw6mQ"
+  "auditCreate": "https://prod-16.italynorth.logic.azure.com:443/workflows/3f0670a6e07c4f7f8f9da217869c802c/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=rbNzV6xJXrHFz9Nt5zd_79Fxg7By7DVY45UVanRw6mQ",
+  "authLogin": "https://prod-23.italynorth.logic.azure.com:443/workflows/cd9a0890bbb84a5997fb4b3571b8ae98/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=J-Bn3307aBLZNRL_RqQrNuwNEsCgBxmVhOQyxAoHP2M",
+  "authRegister": "https://prod-15.italynorth.logic.azure.com:443/workflows/80d2147b3f1c4110a6e8fb0a7a172d29/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=VvaWUxZaSwEHjdTCwWMwEpTUrkAV3WQ86aPoqW78enM",
+  "authPassword": "https://prod-11.italynorth.logic.azure.com:443/workflows/63270868a05e4e82b4996b60e7118e07/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=JST6yeWuNHrVEH2bVRqiZi0z138O1EfzS1LIgJlG8ZQ",
+  "authProfile": "https://prod-21.italynorth.logic.azure.com:443/workflows/981a11069173439a9ae40e2ec7989758/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=NnXcAQlXXDv-hM1e1d5qn8-fUPEbg8XoJ25jTDIBPgc",
+  "authDelete": "https://prod-18.italynorth.logic.azure.com:443/workflows/03f65c6b665e499fb96966f092746fbc/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=f9GBeZsiBgB0b56nEEIzAOL9Pcidu2KyKDRymbe7XCc",
+  "evidenceModerate": "https://prod-08.italynorth.logic.azure.com:443/workflows/6567df3529284777bf46ab7f18543573/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=O5sJyjO33bx6HQxpu74_WUhTGg0MioHut2mwIGt9WO8",
+  "auditAnomaly": "https://prod-23.italynorth.logic.azure.com:443/workflows/99f062f4f1674ef2b72e4d4bcd3390b6/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=VYAHp_2EFISSMlIB_g2AfF067ryuM0xOhHsW_Br6b_g"
 },
   swa:        { host: "sttv5fb957.z38.web.core.windows.net" }
 };

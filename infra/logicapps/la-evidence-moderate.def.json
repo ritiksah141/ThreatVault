@@ -1,0 +1,114 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": { "$connections": { "type": "Object", "defaultValue": {} } },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "id":      { "type": "string" },
+            "caseID":  { "type": "string" },
+            "text":    { "type": "string" }
+          },
+          "required": [ "id", "caseID", "text" ]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Call_content_safety": {
+      "type": "Http",
+      "inputs": {
+        "method": "POST",
+        "uri": "__CS_ENDPOINT__contentsafety/text:analyze?api-version=2024-09-01",
+        "headers": {
+          "Ocp-Apim-Subscription-Key": "__CS_KEY__",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "text": "@{json(triggerBody())?['text']}",
+          "categories": [ "Hate", "SelfHarm", "Sexual", "Violence" ],
+          "outputType": "FourSeverityLevels"
+        }
+      }
+    },
+    "Project_severities": {
+      "type": "Select",
+      "runAfter": { "Call_content_safety": [ "Succeeded" ] },
+      "inputs": {
+        "from": "@coalesce(body('Call_content_safety')?['categoriesAnalysis'], json('[]'))",
+        "select": "@item()?['severity']"
+      }
+    },
+    "Compute_max_severity": {
+      "type": "Compose",
+      "runAfter": { "Project_severities": [ "Succeeded" ] },
+      "inputs": "@if(empty(body('Project_severities')), 0, max(body('Project_severities')))"
+    },
+    "Decide_flag": {
+      "type": "If",
+      "runAfter": { "Compute_max_severity": [ "Succeeded" ] },
+      "expression": {
+        "and": [ { "greaterOrEquals": [ "@coalesce(outputs('Compute_max_severity'), 0)", 4 ] } ]
+      },
+      "actions": {
+        "Get_doc": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+            "method": "get",
+            "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
+            "headers": { "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['caseID']}" }
+          }
+        },
+        "Compose_flagged": {
+          "type": "Compose",
+          "runAfter": { "Get_doc": [ "Succeeded" ] },
+          "inputs": "@union(body('Get_doc'), json('{\"flagged\":true,\"contentModeratorStatus\":\"rejected\"}'))"
+        },
+        "Replace_doc": {
+          "type": "ApiConnection",
+          "runAfter": { "Compose_flagged": [ "Succeeded" ] },
+          "inputs": {
+            "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+            "method": "put",
+            "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
+            "headers": { "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['caseID']}" },
+            "body": "@outputs('Compose_flagged')"
+          }
+        }
+      }
+    },
+    "Response": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": { "Decide_flag": [ "Succeeded", "Failed", "Skipped" ] },
+      "inputs": {
+        "statusCode": 200,
+        "headers": { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        "body": {
+          "ok": true,
+          "id": "@{json(triggerBody())?['id']}",
+          "maxSeverity": "@coalesce(outputs('Compute_max_severity'), 0)",
+          "flagged": "@greaterOrEquals(coalesce(outputs('Compute_max_severity'), 0), 4)"
+        }
+      }
+    },
+    "Response_err": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": { "Call_content_safety": [ "Failed" ] },
+      "inputs": {
+        "statusCode": 200,
+        "headers": { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        "body": { "ok": false, "error": "Content Safety call failed" }
+      }
+    }
+  },
+  "outputs": {}
+}

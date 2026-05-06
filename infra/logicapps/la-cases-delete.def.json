@@ -1,16 +1,28 @@
 {
   "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
   "contentVersion": "1.0.0.0",
-  "parameters": { "$connections": { "type": "Object", "defaultValue": {} } },
+  "parameters": {
+    "$connections": {
+      "type": "Object",
+      "defaultValue": {}
+    }
+  },
   "triggers": {
     "manual": {
-      "type": "Request", "kind": "Http",
+      "type": "Request",
+      "kind": "Http",
       "inputs": {
         "method": "POST",
         "schema": {
           "type": "object",
-          "properties": { "id": { "type": "string" } },
-          "required": ["id"]
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
         }
       }
     }
@@ -19,37 +31,66 @@
     "Delete_case": {
       "type": "ApiConnection",
       "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
         "method": "delete",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('cases')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
-        "headers": { "x-ms-documentdb-raw-partitionkey": "[\"@{json(triggerBody())?['id']}\"]" }
+        "headers": {
+          "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['id']}"
+        }
       }
     },
     "Audit": {
       "type": "ApiConnection",
-      "runAfter": { "Delete_case": [ "Succeeded", "Failed" ] },
+      "runAfter": {
+        "Delete_case": [
+          "Succeeded",
+          "Failed"
+        ]
+      },
       "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
         "method": "post",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
-        "headers": { "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]" },
+        "headers": {
+          "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]"
+        },
         "body": {
-          "id":     "@{guid()}",
+          "id": "@{guid()}",
           "action": "DELETE",
-          "user":   "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
-          "res":    "@json(triggerBody())?['id']",
-          "ip":     "—",
-          "ts":     "@utcNow()"
+          "user": "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
+          "res": "@json(triggerBody())?['id']",
+          "ip": "\u2014",
+          "ts": "@utcNow()"
         }
       }
     },
     "Response": {
-      "type": "Response", "kind": "Http",
-      "runAfter": { "Audit": [ "Succeeded", "Failed" ] },
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": {
+        "Audit": [
+          "Succeeded",
+          "Failed"
+        ]
+      },
       "inputs": {
         "statusCode": 200,
-        "headers": { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-        "body": { "ok": true, "id": "@json(triggerBody())?['id']" }
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": {
+          "ok": true,
+          "id": "@json(triggerBody())?['id']"
+        }
       }
     }
   },

@@ -9,6 +9,31 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
 <script src="config.js"></script>
+<!-- Application Insights Web SDK — distributed telemetry + Smart Detection anomaly alerts.
+     Auto-tracks pageviews, dependencies, and unhandled errors. We also fire custom events
+     via window.__tvTrack(...) at key flows (login, register, evidence-create, case-create). -->
+<script>
+(function(){
+  var conn = ((window.__TV_CONFIG__||{}).ops||{}).appInsightsConnectionString;
+  if (!conn) { window.__tvTrack = function(){}; return; }
+  var s = document.createElement('script');
+  s.src = 'https://js.monitor.azure.com/scripts/b/ai.3.gbl.min.js';
+  s.crossOrigin = 'anonymous';
+  s.onload = function(){
+    try {
+      var snippet = new window.Microsoft.ApplicationInsights.ApplicationInsights({
+        config: { connectionString: conn, enableAutoRouteTracking: true, disableFetchTracking: false }
+      });
+      snippet.loadAppInsights();
+      snippet.trackPageView();
+      window.__tvAppI = snippet;
+      window.__tvTrack = function(name, props){ try { snippet.trackEvent({ name: name }, props || {}); } catch(_){} };
+    } catch(_) { window.__tvTrack = function(){}; }
+  };
+  s.onerror = function(){ window.__tvTrack = function(){}; };
+  document.head.appendChild(s);
+})();
+</script>
 <script>
 tailwind.config = {
   darkMode: 'class',
@@ -75,8 +100,41 @@ html.dark .prog-step.done { background: #052e16; color: #6ee7b7; border-left-col
 .drop-zone.drag-over { border-color: #3b82f6 !important; background: #eff6ff !important; }
 
 /* Toast */
-#toast { animation: slideUp .3s cubic-bezier(.16,1,.3,1); }
+#toast { animation: slideUp .3s cubic-bezier(.16,1,.3,1); border-left: 4px solid #94a3b8; }
+#toast.toast-success { border-left-color: #10b981; }
+#toast.toast-error   { border-left-color: #ef4444; }
+#toast.toast-warning { border-left-color: #f59e0b; }
+#toast.toast-info    { border-left-color: #3b82f6; }
 @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Inline button spinner */
+.btn-spin { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: btnspin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+@keyframes btnspin { to { transform: rotate(360deg); } }
+
+/* Skeleton table rows */
+.skel-row { display: grid; gap: 12px; padding: 12px 24px; align-items: center; }
+.skel-row > div { height: 12px; border-radius: 6px; background: #e5e7eb; animation: shimmer 1.4s infinite; }
+html.dark .skel-row > div { background: #334155; }
+
+/* Modal close X — red hover */
+.modal-close { transition: all .18s; }
+.modal-close:hover { background: #fef2f2 !important; color: #dc2626 !important; }
+html.dark .modal-close:hover { background: rgba(239,68,68,.15) !important; color: #fca5a5 !important; }
+
+/* Field error animation */
+.field-err { animation: fadeIn .18s ease; }
+
+/* Bottom tab bar — mobile only */
+#bottom-tabs { display: none; }
+@media (max-width: 640px) {
+  #sidebar { display: none !important; }
+  #bottom-tabs { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: #fff; border-top: 1px solid #e5e7eb; padding: 8px 4px calc(8px + env(safe-area-inset-bottom)); justify-content: space-around; box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
+  html.dark #bottom-tabs { background: #0f172a; border-top-color: #334155; box-shadow: 0 -4px 16px rgba(0,0,0,.4); }
+  #bottom-tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: #94a3b8; font-size: 10px; font-weight: 800; background: transparent; border: 0; cursor: pointer; }
+  #bottom-tabs button.active { color: #0f172a; }
+  html.dark #bottom-tabs button.active { color: #e2e8f0; }
+  #app-shell main > div { padding-bottom: 80px !important; }
+}
 
 /* Modal */
 .modal-bg { background: rgba(0,0,0,.45); backdrop-filter: blur(8px); }
@@ -115,9 +173,155 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
 <body class="bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100">
 
 <!-- ═══════════════════════════════════════════════════════════════
+     LANDING SCREEN
+═══════════════════════════════════════════════════════════════ -->
+<div id="landing-screen" class="screen active flex-col bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+
+  <!-- Top bar -->
+  <header class="w-full px-6 md:px-10 py-5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-slate-900 dark:bg-white flex items-center justify-center">
+        <span class="material-symbols-outlined text-xl text-cyan-300 dark:text-cyan-600">shield_lock</span>
+      </div>
+      <h1 class="text-lg font-black text-slate-900 dark:text-white">ThreatVault</h1>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleTheme()" class="p-2 rounded-full bg-white/70 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 transition-colors" aria-label="Toggle theme">
+        <span id="landing-theme-icon" class="material-symbols-outlined text-slate-700 dark:text-slate-200 text-[20px]">dark_mode</span>
+      </button>
+      <button onclick="showAuth('login')" class="hidden sm:inline-block px-4 py-2 rounded-full text-xs font-black text-slate-700 dark:text-slate-200 hover:bg-white/70 dark:hover:bg-slate-800 transition-colors">Sign in</button>
+      <button onclick="showAuth('register')" class="px-4 py-2 rounded-full text-xs font-black bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 transition-opacity">Get started</button>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="flex-1 w-full max-w-6xl mx-auto px-6 md:px-10 py-10 md:py-16 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+    <div>
+      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 text-[10px] font-black uppercase tracking-wider">
+        <span class="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span>
+        Cloud-native · Microsoft Azure
+      </span>
+      <h2 class="mt-5 text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+        Forensic evidence,<br/>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600">audit-ready</span> by design.
+      </h2>
+      <p class="mt-5 text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-lg">
+        ThreatVault is a SOC and DFIR workbench for capturing chain-of-custody evidence, managing investigations, and producing immutable audit trails: backed by Logic Apps, Cosmos DB and Blob Storage.
+      </p>
+      <div class="mt-7 flex flex-wrap gap-3">
+        <button onclick="showAuth('register')" class="px-6 py-3.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-sm hover:opacity-90 transition-opacity flex items-center gap-2">
+          Create your vault
+          <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </button>
+        <button onclick="showAuth('login')" class="px-6 py-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-black text-sm hover:bg-white dark:hover:bg-slate-800 transition-colors">
+          Sign in
+        </button>
+      </div>
+      <div class="mt-8 flex items-center gap-4 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+        <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-emerald-500">verified</span> SHA-256 integrity</span>
+        <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-emerald-500">lock</span> Azure RBAC</span>
+        <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-emerald-500">history</span> Immutable audit</span>
+      </div>
+    </div>
+
+    <!-- Visual mock -->
+    <div class="relative">
+      <div class="absolute -inset-4 bg-gradient-to-br from-cyan-400/20 to-blue-600/20 blur-3xl rounded-3xl"></div>
+      <div class="relative rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 p-6 text-white shadow-2xl border border-white/10">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          </div>
+          <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">vault.threatvault.io</span>
+        </div>
+        <div class="space-y-3">
+          <div class="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-red-500/20 flex items-center justify-center">
+              <span class="material-symbols-outlined text-red-400 text-[20px]">priority_high</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-black truncate">EVD-2025-001 · APT29 C2 capture</p>
+              <p class="text-[10px] text-slate-400 truncate">CVSS 9.1 · pcap · just uploaded</p>
+            </div>
+            <span class="text-[9px] font-black px-2 py-1 rounded-full bg-red-500/20 text-red-300">CRITICAL</span>
+          </div>
+          <div class="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center">
+              <span class="material-symbols-outlined text-amber-400 text-[20px]">folder_managed</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-black truncate">CASE-2025-002 · Cobalt Strike</p>
+              <p class="text-[10px] text-slate-400 truncate">2 evidence items · Active</p>
+            </div>
+            <span class="text-[9px] font-black px-2 py-1 rounded-full bg-amber-500/20 text-amber-300">HIGH</span>
+          </div>
+          <div class="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+              <span class="material-symbols-outlined text-emerald-400 text-[20px]">history</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-black truncate">Audit · CREATE EVD-2025-001</p>
+              <p class="text-[10px] text-slate-400 truncate">analyst@threatvault · 185.23.41.12</p>
+            </div>
+            <span class="text-[9px] font-black px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300">LOGGED</span>
+          </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-white/10 grid grid-cols-3 gap-3 text-center">
+          <div><p class="text-lg font-black text-cyan-300">15</p><p class="text-[9px] font-bold text-slate-500 uppercase">Logic Apps</p></div>
+          <div><p class="text-lg font-black text-cyan-300">4</p><p class="text-[9px] font-bold text-slate-500 uppercase">Containers</p></div>
+          <div><p class="text-lg font-black text-cyan-300">∞</p><p class="text-[9px] font-bold text-slate-500 uppercase">Audit log</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="w-full max-w-6xl mx-auto px-6 md:px-10 pb-16">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="rounded-3xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+        <div class="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-cyan-600 dark:text-cyan-300">inventory_2</span>
+        </div>
+        <h3 class="text-base font-black text-slate-900 dark:text-white mb-1">Evidence vault</h3>
+        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">SAS-token uploads to Blob Storage with SHA-256 integrity, CVSS scoring and tag-based search.</p>
+      </div>
+      <div class="rounded-3xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+        <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-amber-600 dark:text-amber-300">cases</span>
+        </div>
+        <h3 class="text-base font-black text-slate-900 dark:text-white mb-1">Cases &amp; investigations</h3>
+        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">Group evidence into cases, assign analysts, track priority and progress through the kill-chain.</p>
+      </div>
+      <div class="rounded-3xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+        <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-300">verified_user</span>
+        </div>
+        <h3 class="text-base font-black text-slate-900 dark:text-white mb-1">Audit &amp; compliance</h3>
+        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">Every action — login, upload, edit, delete — written to an immutable Cosmos DB audit collection.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer strip -->
+  <footer class="w-full border-t border-gray-100 dark:border-slate-800">
+    <div class="max-w-6xl mx-auto px-6 md:px-10 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p class="text-[11px] font-bold text-slate-500">© ThreatVault · Region: italynorth</p>
+      <div class="flex flex-wrap items-center justify-center gap-2">
+        <span class="px-2 py-1 rounded-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-[10px] font-bold text-slate-500">Logic Apps</span>
+        <span class="px-2 py-1 rounded-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-[10px] font-bold text-slate-500">Cosmos DB</span>
+        <span class="px-2 py-1 rounded-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-[10px] font-bold text-slate-500">Blob Storage</span>
+        <span class="px-2 py-1 rounded-full bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-[10px] font-bold text-slate-500">App Insights</span>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      LOGIN SCREEN
 ═══════════════════════════════════════════════════════════════ -->
-<div id="login-screen" class="screen active items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+<div id="login-screen" class="screen items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
   <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6">
 
     <!-- Brand panel -->
@@ -166,6 +370,9 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
 
     <!-- Auth panel -->
     <div class="rounded-3xl bg-white dark:bg-slate-800 p-8 shadow-xl">
+      <button onclick="showLanding()" class="text-[11px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1 mb-3">
+        <span class="material-symbols-outlined text-[16px]">arrow_back</span> Back to home
+      </button>
       <h2 class="text-2xl font-black mb-1">Access Portal</h2>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Sign in to continue to ThreatVault</p>
 
@@ -176,35 +383,48 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
       </div>
 
       <!-- Login form -->
-      <div id="login-form">
+      <form id="login-form" onsubmit="event.preventDefault();doLogin()">
         <div class="space-y-3">
-          <input id="l-email" type="email" placeholder="analyst@threatvault.com" class="tv-input" autocomplete="email"/>
-          <input id="l-pass" type="password" placeholder="Password" class="tv-input" autocomplete="current-password"/>
+          <div>
+            <input id="l-email" type="email" placeholder="analyst@threatvault.com" class="tv-input" autocomplete="email"/>
+            <p id="l-email-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+          </div>
+          <div>
+            <input id="l-pass" type="password" placeholder="Password" class="tv-input" autocomplete="current-password"/>
+            <p id="l-pass-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+          </div>
         </div>
-        <button onclick="doLogin()" class="mt-4 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+        <button type="submit" class="mt-4 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+          <span id="l-spin" class="btn-spin hidden"></span>
           <span id="l-txt">Authenticate</span>
-          <span id="l-spin" class="hidden text-base animate-spin">⟳</span>
         </button>
-        <div class="mt-4 p-3 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
-          <p class="text-[11px] font-bold text-blue-700 dark:text-blue-300">
-            <span class="material-symbols-outlined text-[14px] align-middle mr-1">info</span>
-            Demo credentials: <strong>analyst@threatvault.com</strong> / <strong>ThreatVault1!</strong>
-          </p>
-        </div>
-      </div>
+      </form>
 
       <!-- Register form -->
-      <div id="register-form" class="hidden">
+      <form id="register-form" class="hidden" onsubmit="event.preventDefault();doRegister()">
         <div class="space-y-3">
-          <input id="r-name" type="text" placeholder="Full Name" class="tv-input" autocomplete="name"/>
-          <input id="r-email" type="email" placeholder="analyst@threatvault.com" class="tv-input" autocomplete="email"/>
-          <input id="r-pass" type="password" placeholder="Password (min 8 chars)" class="tv-input" autocomplete="new-password"/>
-          <input id="r-pass2" type="password" placeholder="Confirm Password" class="tv-input" autocomplete="new-password"/>
+          <div>
+            <input id="r-name" type="text" placeholder="Full Name" class="tv-input" autocomplete="name"/>
+            <p id="r-name-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+          </div>
+          <div>
+            <input id="r-email" type="email" placeholder="analyst@threatvault.com" class="tv-input" autocomplete="email"/>
+            <p id="r-email-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+          </div>
+          <div>
+            <input id="r-pass" type="password" placeholder="Password (min 8 chars)" class="tv-input" autocomplete="new-password"/>
+            <p id="r-pass-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+          </div>
+          <div>
+            <input id="r-pass2" type="password" placeholder="Confirm Password" class="tv-input" autocomplete="new-password"/>
+            <p id="r-pass2-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+          </div>
         </div>
-        <button onclick="doRegister()" class="mt-4 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 transition-opacity">
-          Create Account
+        <button type="submit" class="mt-4 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+          <span id="r-spin" class="btn-spin hidden"></span>
+          <span id="r-txt">Create Account</span>
         </button>
-      </div>
+      </form>
 
       <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 text-center">
         <p class="text-xs text-gray-400">
@@ -316,19 +536,37 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
               <div class="h-52"><canvas id="chart-severity"></canvas></div>
             </div>
             <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
-              <h3 class="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-slate-400 mb-4">Azure Service Pulse</h3>
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-slate-400">Azure Service Pulse</h3>
+                <button onclick="refreshPulse()" title="Retry all" class="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors">
+                  <span class="material-symbols-outlined text-[16px]">refresh</span>
+                </button>
+              </div>
               <div id="service-pulse" class="space-y-3">
                 <div class="skel h-8 rounded-full"></div>
                 <div class="skel h-8 rounded-full"></div>
                 <div class="skel h-8 rounded-full"></div>
                 <div class="skel h-8 rounded-full"></div>
               </div>
-              <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
+              <div class="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-[16px] text-emerald-500">verified_user</span>
                   <span id="region-badge" class="text-xs font-black text-gray-600 dark:text-slate-300">Region: italynorth</span>
                 </div>
+                <span id="pulse-checked" class="text-[10px] font-bold text-gray-400 dark:text-slate-500"></span>
               </div>
+            </div>
+          </div>
+
+          <!-- Trend + top cases -->
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+            <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+              <h3 class="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-slate-400 mb-4">Evidence Uploads — Last 7 Days</h3>
+              <div class="h-44"><canvas id="chart-uploads"></canvas></div>
+            </div>
+            <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
+              <h3 class="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-slate-400 mb-4">Top Cases by Evidence Count</h3>
+              <div class="h-44"><canvas id="chart-topcases"></canvas></div>
             </div>
           </div>
 
@@ -455,8 +693,9 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
                     </div>
 
                     <button id="submit-btn" onclick="submitEvidence()" disabled
-                      class="w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity">
-                      Submit to Platform
+                      class="w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                      <span id="submit-spin" class="btn-spin hidden"></span>
+                      <span id="submit-txt">Submit to Platform</span>
                     </button>
                   </div>
                 </div>
@@ -496,6 +735,18 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
             <button onclick="exportAuditCSV()" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl text-xs font-black hover:bg-gray-200 flex items-center gap-1">
               <span class="material-symbols-outlined text-[14px]">download</span> Export CSV
             </button>
+            <button onclick="runAnomalyScan()" class="ml-auto px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-black hover:bg-purple-700 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">radar</span> Anomaly Scan
+            </button>
+          </div>
+          <div id="anomaly-panel" class="hidden mb-6 rounded-2xl bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700/50 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-black text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                <span class="material-symbols-outlined">radar</span> Cyber Threat Pattern Recognition
+              </h3>
+              <span id="anomaly-meta" class="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-slate-500"></span>
+            </div>
+            <div id="anomaly-body" class="text-xs text-gray-700 dark:text-slate-300"></div>
           </div>
           <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 overflow-hidden">
             <table class="w-full text-xs">
@@ -515,30 +766,33 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
 
         <!-- ─── SETTINGS ─── -->
         <div id="page-settings" class="page">
-          <div class="max-w-2xl space-y-6">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
             <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
               <h3 class="font-black text-gray-900 dark:text-gray-100 mb-5 flex items-center gap-2">
-                <span class="material-symbols-outlined text-gray-400">badge</span> Account
+                <span class="material-symbols-outlined text-gray-400">badge</span> Profile
               </h3>
-              <div class="space-y-3 text-sm">
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
-                  <span class="font-bold text-gray-500 dark:text-gray-400">Email</span>
-                  <span id="prof-email" class="font-black text-gray-900 dark:text-gray-100"></span>
+              <form class="space-y-3 text-sm" onsubmit="event.preventDefault();updateProfile()">
+                <div>
+                  <label class="text-[10px] font-black uppercase tracking-wide text-gray-500 dark:text-slate-400 block mb-1 pl-1">Email (read-only)</label>
+                  <input id="pf-email" type="email" disabled class="tv-input opacity-70 cursor-not-allowed"/>
                 </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
-                  <span class="font-bold text-gray-500 dark:text-gray-400">Display Name</span>
-                  <span id="prof-name" class="font-black text-gray-900 dark:text-gray-100"></span>
+                <div>
+                  <label class="text-[10px] font-black uppercase tracking-wide text-gray-500 dark:text-slate-400 block mb-1 pl-1">Display Name</label>
+                  <input id="pf-name" type="text" class="tv-input" placeholder="Full Name"/>
+                  <p id="pf-name-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
                 </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-slate-700">
-                  <span class="font-bold text-gray-500 dark:text-gray-400">Role</span>
-                  <span id="prof-role" class="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-black">Analyst</span>
+                <div>
+                  <label class="text-[10px] font-black uppercase tracking-wide text-gray-500 dark:text-slate-400 block mb-1 pl-1">Role</label>
+                  <select id="pf-role" class="tv-input">
+                    <option>Analyst</option><option>Senior Analyst</option><option>Investigator</option><option>Admin</option>
+                  </select>
                 </div>
-                <div class="flex justify-between items-center py-2">
-                  <span class="font-bold text-gray-500 dark:text-gray-400">Azure Region</span>
-                  <span id="prof-region" class="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-black">italynorth</span>
+                <div class="flex items-center justify-between pt-2">
+                  <span class="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-black" id="prof-region">italynorth</span>
+                  <button type="submit" class="px-5 py-2.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90">Save Profile</button>
                 </div>
-              </div>
+              </form>
             </div>
 
             <div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-6">
@@ -570,12 +824,21 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
               <h3 class="font-black text-gray-900 dark:text-gray-100 mb-5 flex items-center gap-2">
                 <span class="material-symbols-outlined text-gray-400">lock</span> Change Password
               </h3>
-              <div class="space-y-3">
-                <input id="cp-cur" type="password" placeholder="Current Password" class="tv-input"/>
-                <input id="cp-new" type="password" placeholder="New Password" class="tv-input"/>
-                <input id="cp-new2" type="password" placeholder="Confirm New Password" class="tv-input"/>
-                <button onclick="changePassword()" class="w-full py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90">Update Password</button>
-              </div>
+              <form class="space-y-3" onsubmit="event.preventDefault();changePassword()">
+                <div>
+                  <input id="cp-cur" type="password" placeholder="Current Password" class="tv-input"/>
+                  <p id="cp-cur-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+                </div>
+                <div>
+                  <input id="cp-new" type="password" placeholder="New Password" class="tv-input"/>
+                  <p id="cp-new-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+                </div>
+                <div>
+                  <input id="cp-new2" type="password" placeholder="Confirm New Password" class="tv-input"/>
+                  <p id="cp-new2-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+                </div>
+                <button type="submit" class="w-full py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90">Update Password</button>
+              </form>
             </div>
 
             <div class="rounded-2xl bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 p-6">
@@ -593,6 +856,25 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
 
       </div><!-- end page content -->
     </main>
+
+    <!-- Mobile bottom tabs -->
+    <nav id="bottom-tabs">
+      <button data-page="dashboard" onclick="showPage('dashboard',null);syncBottomTab('dashboard')" class="active">
+        <span class="material-symbols-outlined text-[22px]">space_dashboard</span>Home
+      </button>
+      <button data-page="evidence" onclick="showPage('evidence',null);syncBottomTab('evidence')">
+        <span class="material-symbols-outlined text-[22px]">perm_media</span>Evidence
+      </button>
+      <button data-page="upload" onclick="showPage('upload',null);syncBottomTab('upload')">
+        <span class="material-symbols-outlined text-[22px]">cloud_upload</span>Upload
+      </button>
+      <button data-page="cases" onclick="showPage('cases',null);syncBottomTab('cases')">
+        <span class="material-symbols-outlined text-[22px]">folder_open</span>Cases
+      </button>
+      <button data-page="settings" onclick="showPage('settings',null);syncBottomTab('settings')">
+        <span class="material-symbols-outlined text-[22px]">settings</span>More
+      </button>
+    </nav>
   </div>
 </div>
 
@@ -603,7 +885,7 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
 <!-- Evidence Detail Modal -->
 <div id="ev-modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4" onclick="if(event.target===this)closeEvModal()">
   <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
-    <button onclick="closeEvModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 z-10">
+    <button onclick="closeEvModal()" class="modal-close absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex items-center justify-center z-10">
       <span class="material-symbols-outlined text-[18px]">close</span>
     </button>
     <div id="ev-modal-body"></div>
@@ -611,16 +893,27 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
 </div>
 
 <!-- Case Modal -->
-<div id="case-modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4" onclick="if(event.target===this)this.classList.add('hidden')">
-  <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm p-8 shadow-2xl">
+<div id="case-modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4" onclick="if(event.target===this)closeCaseModal()">
+  <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm p-8 shadow-2xl relative">
+    <button onclick="closeCaseModal()" class="modal-close absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex items-center justify-center">
+      <span class="material-symbols-outlined text-[18px]">close</span>
+    </button>
     <h3 class="text-xl font-black mb-6 text-gray-900 dark:text-gray-100">New Case</h3>
-    <div class="space-y-3">
-      <input id="nc-title" type="text" placeholder="Case Title *" class="tv-input"/>
-      <select id="nc-priority" class="tv-input">
-        <option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option>
-      </select>
-    </div>
-    <button onclick="createCase()" class="mt-5 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90">Create Case</button>
+    <form onsubmit="event.preventDefault();createCase()">
+      <div class="space-y-3">
+        <div>
+          <input id="nc-title" type="text" placeholder="Case Title *" class="tv-input"/>
+          <p id="nc-title-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
+        </div>
+        <select id="nc-priority" class="tv-input">
+          <option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option>
+        </select>
+      </div>
+      <button type="submit" class="mt-5 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 flex items-center justify-center gap-2">
+        <span id="nc-spin" class="btn-spin hidden"></span>
+        <span>Create Case</span>
+      </button>
+    </form>
   </div>
 </div>
 
@@ -638,11 +931,10 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
 
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 const CFG = window.__TV_CONFIG__ || {};
-const SVC = CFG.services || {};
 
-// Per-operation Logic App URLs (CW2 wires up 10 separate workflows). Empty string
-// for any endpoint means no live service configured → frontend falls back to the
-// in-memory demo dataset for that resource.
+// Per-operation Logic App URLs (CW2 wires up 15 separate workflows — evidence,
+// cases, audit, and the five auth flows). Empty string means that endpoint is
+// not configured.
 const EP = CFG.endpoints || {};
 const EVIDENCE_LIST   = (EP.evidenceList   || '').trim();
 const EVIDENCE_CREATE = (EP.evidenceCreate || '').trim();
@@ -655,40 +947,22 @@ const CASES_DELETE    = (EP.casesDelete    || '').trim();
 const AUDIT_LIST      = (EP.auditList      || '').trim();
 const AUDIT_CREATE    = (EP.auditCreate    || '').trim();
 
-// Legacy auth service (optional)
-const AUTH_URL = (SVC.auth || '').replace(/\/$/, '');
+// Auth Logic Apps (CW2 — five workflows over a Cosmos `users` container)
+const AUTH_LOGIN    = (EP.authLogin    || '').trim();
+const AUTH_REGISTER = (EP.authRegister || '').trim();
+const AUTH_PASSWORD = (EP.authPassword || '').trim();
+const AUTH_PROFILE  = (EP.authProfile  || '').trim();
+const AUTH_DELETE   = (EP.authDelete   || '').trim();
+const AUTH_LIVE     = !!(AUTH_LOGIN && AUTH_REGISTER);
+
+// Advanced Azure-AI workflows (Content Safety + audit anomaly detection)
+const EVIDENCE_MODERATE = (EP.evidenceModerate || '').trim();
+const AUDIT_ANOMALY     = (EP.auditAnomaly     || '').trim();
 
 const MIN_PASS = (CFG.security || {}).minPasswordLength || 8;
 const REGION   = (CFG.compliance || {}).primaryRegion || 'italynorth';
-const HEALTH_CHECKS = ((CFG.ops || {}).healthChecks) || [];
 
-// Pin demo mode if no live evidence endpoint
 const ANY_LIVE = !!(EVIDENCE_LIST || CASES_LIST || AUDIT_LIST);
-
-// ─── DEMO DATA ───────────────────────────────────────────────────────────────
-// Used when microservices are unreachable so the app always works for vodcast.
-const DEMO_CASES = [
-  { id: 'CASE-2025-001', title: 'APT29 Intrusion Analysis', status: 'Active', priority: 'Critical', analyst: 'R. Sah', count: 3, updated: '2025-05-01' },
-  { id: 'CASE-2025-002', title: 'Cobalt Strike C2 Traffic', status: 'Open',   priority: 'High',     analyst: 'R. Sah', count: 2, updated: '2025-04-28' },
-  { id: 'CASE-2025-003', title: 'Ransomware Evidence Dump', status: 'Open',   priority: 'Critical', analyst: 'R. Sah', count: 1, updated: '2025-04-25' },
-];
-const DEMO_EVIDENCE = [
-  { id: 'EVD-2025-001', title: 'C2 Beacon Network Capture',  caseID: 'CASE-2025-001', ext: 'pcap', cvss: 9.1, sev: 'Critical', by: 'R. Sah', at: '2025-05-01T10:20:00Z', notes: 'Active C2 communication captured during live incident response.', tags: ['apt29','c2'], sha256: 'a3f2c1...d9e4b7', flagged: false },
-  { id: 'EVD-2025-002', title: 'Cobalt Strike Loader Screenshot', caseID: 'CASE-2025-001', ext: 'png',  cvss: 8.5, sev: 'High',     by: 'R. Sah', at: '2025-04-30T14:10:00Z', notes: 'Screenshot showing Cobalt Strike beacon injection.',            tags: ['malware','loader'], sha256: 'b7c3d2...e1f5a9', flagged: false },
-  { id: 'EVD-2025-003', title: 'Ransomware Execution Video',     caseID: 'CASE-2025-003', ext: 'mp4',  cvss: 9.8, sev: 'Critical', by: 'R. Sah', at: '2025-04-25T09:00:00Z', notes: 'Full screen recording of ransomware encryption sequence.',    tags: ['ransomware','encryption'], sha256: 'c8d4e3...f2a6b1', flagged: true },
-  { id: 'EVD-2025-004', title: 'Lateral Movement Log Archive',   caseID: 'CASE-2025-002', ext: 'zip',  cvss: 7.2, sev: 'High',     by: 'R. Sah', at: '2025-04-28T16:45:00Z', notes: 'Compressed Windows event logs showing lateral movement.',    tags: ['lateral-movement'], sha256: 'd9e5f4...a3b7c2', flagged: false },
-  { id: 'EVD-2025-005', title: 'Phishing Email Headers',         caseID: 'CASE-2025-002', ext: 'pcap', cvss: 5.5, sev: 'Medium',   by: 'R. Sah', at: '2025-04-27T11:30:00Z', notes: 'SMTP traffic capture containing initial phishing vector.',   tags: ['phishing','smtp'], sha256: 'e1f6a5...b4c8d3', flagged: false },
-];
-const DEMO_AUDIT = [
-  { action: 'LOGIN',  user: 'analyst@threatvault.com', res: 'auth-service',       ip: '185.23.41.12', ts: '2025-05-01 10:18' },
-  { action: 'CREATE', user: 'analyst@threatvault.com', res: 'CASE-2025-001',       ip: '185.23.41.12', ts: '2025-05-01 10:19' },
-  { action: 'CREATE', user: 'analyst@threatvault.com', res: 'EVD-2025-001',        ip: '185.23.41.12', ts: '2025-05-01 10:20' },
-  { action: 'READ',   user: 'analyst@threatvault.com', res: 'EVD-2025-002',        ip: '185.23.41.12', ts: '2025-04-30 14:12' },
-  { action: 'UPDATE', user: 'analyst@threatvault.com', res: 'CASE-2025-001',       ip: '185.23.41.12', ts: '2025-04-30 14:15' },
-  { action: 'DELETE', user: 'analyst@threatvault.com', res: 'EVD-old-draft',       ip: '185.23.41.12', ts: '2025-04-29 09:05' },
-  { action: 'CREATE', user: 'analyst@threatvault.com', res: 'EVD-2025-003',        ip: '185.23.41.12', ts: '2025-04-25 09:01' },
-  { action: 'LOGOUT', user: 'analyst@threatvault.com', res: 'auth-service',        ip: '185.23.41.12', ts: '2025-04-24 18:00' },
-];
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let token    = sessionStorage.getItem('tv_token');
@@ -696,29 +970,25 @@ let user     = JSON.parse(sessionStorage.getItem('tv_user') || 'null');
 let evidence = [];
 let cases    = [];
 let audit    = [];
-let demoMode = false;
 let pendingFile = null;
 let toastTimer;
 let sevChart;
-
-// Local user store (for demo/offline auth)
-function getLocalUsers() {
-  try { return JSON.parse(localStorage.getItem('tv_users') || '[]'); } catch { return []; }
-}
-function saveLocalUsers(arr) { localStorage.setItem('tv_users', JSON.stringify(arr)); }
-
-// Seed a default user so demo always works
-(function seedDemo() {
-  const users = getLocalUsers();
-  if (!users.find(u => u.email === 'analyst@threatvault.com')) {
-    users.push({ email: 'analyst@threatvault.com', name: 'Ritik Sah', password: 'ThreatVault1!', role: 'Analyst', id: 'usr-001' });
-    saveLocalUsers(users);
-  }
-})();
+const pulseStatus = { evidence: null, cases: null, audit: null, storage: null };
 
 // ─── SCREEN & PAGE ────────────────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+function showLanding() { showScreen('landing-screen'); updateThemeIcon(); }
+function showAuth(mode) {
+  showScreen('login-screen');
+  setAuthTab(mode === 'register' ? 'register' : 'login');
+  updateThemeIcon();
+  setTimeout(() => {
+    const el = document.getElementById(mode === 'register' ? 'r-name' : 'l-email');
+    if (el) el.focus();
+  }, 50);
 }
 
 function showPage(name, el) {
@@ -738,6 +1008,11 @@ function showPage(name, el) {
 
   if (name === 'settings') renderSettingsPage();
   if (name === 'evidence') filterEvidence();
+
+  // Mirror selection on the mobile bottom tab bar
+  document.querySelectorAll('#bottom-tabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === name);
+  });
 }
 
 function globalSearch(q) {
@@ -756,59 +1031,70 @@ function setAuthTab(tab) {
   tr.className = `rounded-xl py-2 text-sm font-bold transition-all ${!isLogin ? 'bg-white dark:bg-slate-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`;
 }
 
+// ─── FORM VALIDATION HELPERS ──────────────────────────────────────────────────
+function showFieldErr(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+function clearFieldErrs(...ids) {
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+}
+
+// ─── PASSWORD HASH ────────────────────────────────────────────────────────────
+// Salt with email so two users can't share a hash. Done client-side so Logic Apps
+// only ever see the digest — plain passwords never go over the wire.
+async function hashPwd(email, password) {
+  const data = new TextEncoder().encode((email||'').toLowerCase() + ':' + (password||''));
+  const buf  = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
 async function doLogin() {
   const email = (document.getElementById('l-email').value || '').trim().toLowerCase();
   const pass  = document.getElementById('l-pass').value || '';
 
-  if (!email || !email.includes('@')) return toast('⚠️', 'Enter a valid email');
-  if (pass.length < 1)              return toast('⚠️', 'Enter your password');
+  clearFieldErrs('l-email-err','l-pass-err');
+  let bad = false;
+  if (!email || !email.includes('@')) { showFieldErr('l-email-err','Enter a valid email.'); bad = true; }
+  if (pass.length < 1)                 { showFieldErr('l-pass-err','Password is required.'); bad = true; }
+  if (bad) return;
 
   const txt  = document.getElementById('l-txt');
   const spin = document.getElementById('l-spin');
   txt.classList.add('hidden'); spin.classList.remove('hidden');
 
-  // ① Try live auth service
-  if (AUTH_URL) {
-    try {
-      const res  = await fetch(`${AUTH_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email, password: pass }),
-        mode: 'cors', cache: 'no-store', credentials: 'omit'
-      });
-      const data = await res.json();
-      if (res.ok) {
-        finishLogin({ id: data.userId, email, name: nameFromEmail(email), role: data.role || 'Analyst' }, data.token, false);
-        return;
-      }
-      // Service rejected (bad credentials)
-      toast('❌', data.error || 'Login failed');
-      return;
-    } catch (_) {
-      toast('⚠️', 'Auth service unreachable — using local fallback');
-    }
-  }
-
-  // ② Local fallback auth
-  const users = getLocalUsers();
-  const match = users.find(u => u.email === email && u.password === pass);
-  if (!match) {
-    toast('❌', 'Invalid credentials');
+  if (!AUTH_LOGIN) {
+    showFieldErr('l-pass-err','Auth service is not configured. Deploy the auth Logic Apps in Azure.');
     txt.classList.remove('hidden'); spin.classList.add('hidden');
     return;
   }
 
-  finishLogin({ id: match.id, email, name: match.name, role: match.role }, 'local-token', true);
+  try {
+    const passwordHash = await hashPwd(email, pass);
+    const r = await lcCall(AUTH_LOGIN, { email, passwordHash });
+    if (r && r.ok) {
+      finishLogin({ id: r.user.userId, email: r.user.email, name: r.user.name, role: r.user.role || 'Analyst' }, r.token);
+      return;
+    }
+    showFieldErr('l-pass-err', (r && r.error) || 'Invalid credentials.');
+  } catch (_) {
+    showFieldErr('l-pass-err', 'Auth service unreachable. Check Azure Logic App.');
+  }
+  txt.classList.remove('hidden'); spin.classList.add('hidden');
 }
 
-function finishLogin(u, tok, demo) {
-  token = tok; user = u; demoMode = demo;
+function finishLogin(u, tok) {
+  token = tok; user = u;
   sessionStorage.setItem('tv_token', token);
   sessionStorage.setItem('tv_user',  JSON.stringify(user));
   const l = document.getElementById('l-txt'); if (l) l.classList.remove('hidden');
   const s = document.getElementById('l-spin'); if (s) s.classList.add('hidden');
-  toast('✅', 'Access granted' + (demo ? ' (demo mode)' : ''));
+  toast('✅', 'Access granted');
+  if (window.__tvAppI) window.__tvAppI.setAuthenticatedUserContext(u.email);
+  if (window.__tvTrack) window.__tvTrack('Auth.Login', { email: u.email, role: u.role });
   initApp();
 }
 
@@ -819,56 +1105,49 @@ async function doRegister() {
   const pass  = document.getElementById('r-pass').value || '';
   const pass2 = document.getElementById('r-pass2').value || '';
 
-  if (!name)                        return toast('⚠️', 'Enter your full name');
-  if (!email.includes('@'))         return toast('⚠️', 'Enter a valid email');
-  if (pass.length < MIN_PASS)       return toast('⚠️', `Password must be at least ${MIN_PASS} characters`);
-  if (pass !== pass2)               return toast('⚠️', 'Passwords do not match');
+  clearFieldErrs('r-name-err','r-email-err','r-pass-err','r-pass2-err');
+  let bad = false;
+  if (!name)                  { showFieldErr('r-name-err','Enter your full name.'); bad = true; }
+  if (!email.includes('@'))   { showFieldErr('r-email-err','Enter a valid email.'); bad = true; }
+  if (pass.length < MIN_PASS) { showFieldErr('r-pass-err',`Password must be at least ${MIN_PASS} characters.`); bad = true; }
+  if (pass !== pass2)         { showFieldErr('r-pass2-err','Passwords do not match.'); bad = true; }
+  if (bad) return;
 
-  // ① Try live auth service
-  if (AUTH_URL) {
-    try {
-      const res  = await fetch(`${AUTH_URL}/auth/register/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName: name, email, password: pass }),
-        mode: 'cors', cache: 'no-store', credentials: 'omit'
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast('✉️', 'Verification email sent. Check your inbox.');
-        setAuthTab('login');
-        return;
-      }
-      toast('❌', data.error || 'Registration failed');
-      return;
-    } catch (_) {
-      toast('⚠️', 'Auth service unreachable — saving locally');
-    }
+  const rTxt = document.getElementById('r-txt');
+  const rSpin = document.getElementById('r-spin');
+  if (rTxt) rTxt.classList.add('hidden'); if (rSpin) rSpin.classList.remove('hidden');
+
+  if (!AUTH_REGISTER) {
+    showFieldErr('r-email-err','Registration service is not configured. Deploy the auth Logic Apps in Azure.');
+    if (rTxt) rTxt.classList.remove('hidden'); if (rSpin) rSpin.classList.add('hidden');
+    return;
   }
 
-  // ② Local registration
-  const users = getLocalUsers();
-  if (users.find(u => u.email === email)) return toast('❌', 'Email already registered');
-  users.push({ id: 'usr-' + rHex(6), email, name, password: pass, role: 'Analyst' });
-  saveLocalUsers(users);
-  toast('✅', 'Account created. Please log in.');
-  setAuthTab('login');
+  try {
+    const passwordHash = await hashPwd(email, pass);
+    const r = await lcCall(AUTH_REGISTER, { email, fullName: name, passwordHash });
+    if (r && r.ok) {
+      if (rTxt) rTxt.classList.remove('hidden'); if (rSpin) rSpin.classList.add('hidden');
+      toast('✅', 'Account created. Please log in.');
+      if (window.__tvTrack) window.__tvTrack('Auth.Register', { email });
+      setAuthTab('login');
+      return;
+    }
+    showFieldErr('r-email-err', (r && r.error) || 'Registration failed.');
+  } catch (_) {
+    showFieldErr('r-email-err', 'Auth service unreachable. Check Azure Logic App.');
+  }
+  if (rTxt) rTxt.classList.remove('hidden'); if (rSpin) rSpin.classList.add('hidden');
 }
 
 function doLogout() {
-  if (AUTH_URL && token && token !== 'local-token') {
-    fetch(`${AUTH_URL}/auth/logout`, {
-      method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
-      body: JSON.stringify({ userId: user?.id }), mode:'cors', credentials:'omit'
-    }).catch(() => {});
-  }
   token = null; user = null; evidence = []; cases = []; audit = [];
   pendingFile = null;
   sessionStorage.removeItem('tv_token');
   sessionStorage.removeItem('tv_user');
-  demoMode = false;
   if (sevChart) { sevChart.destroy(); sevChart = null; }
-  showScreen('login-screen');
+  showScreen('landing-screen');
+  updateThemeIcon();
   toast('👋', 'Signed out');
 }
 
@@ -879,10 +1158,11 @@ async function initApp() {
   renderServicePulse();
   updateRegionBadge();
 
-  document.getElementById('mode-badge').querySelector('span').textContent =
-    demoMode ? '⚡ Demo Mode — connect Azure in config.js' : '🔒 Live Mode';
+  document.getElementById('mode-badge').querySelector('span').textContent = '🔒 Live Mode';
 
   await loadData();
+  lastPulseAt = Date.now();
+  renderServicePulse();
   renderDashboard();
   renderEvidence(evidence);
   renderCases();
@@ -891,38 +1171,58 @@ async function initApp() {
   updateThemeIcon();
 }
 
+function renderTableSkeleton(tbodyId, cols, rows = 4) {
+  const t = document.getElementById(tbodyId);
+  if (!t) return;
+  const cells = Array.from({length: cols}, () => '<td class="px-6 py-3"><div class="skel h-3 rounded-md"></div></td>').join('');
+  t.innerHTML = Array.from({length: rows}, () => `<tr>${cells}</tr>`).join('');
+}
+function renderGridSkeleton(hostId, n = 6) {
+  const h = document.getElementById(hostId);
+  if (!h) return;
+  h.innerHTML = Array.from({length: n}, () => `<div class="rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 overflow-hidden"><div class="skel h-40"></div><div class="p-4 space-y-2"><div class="skel h-3 w-2/3 rounded-md"></div><div class="skel h-3 w-1/2 rounded-md"></div></div></div>`).join('');
+}
+
 async function loadData() {
+  // Skeletons while data fetches
+  renderTableSkeleton('dash-tbody', 5);
+  renderGridSkeleton('evidence-grid', 6);
+  renderTableSkeleton('cases-tbody', 6);
+  renderTableSkeleton('audit-tbody', 5);
+
   // Evidence
+  evidence = [];
   if (EVIDENCE_LIST) {
     try {
       const r = await lcCall(EVIDENCE_LIST, {});
       evidence = (r.items || []).map(normaliseEv);
-      demoMode = false;
-    } catch (_) { evidence = DEMO_EVIDENCE.map(x => ({...x})); demoMode = true; }
-  } else {
-    evidence = DEMO_EVIDENCE.map(x => ({...x}));
-    demoMode = true;
-  }
+      pulseStatus.evidence = true;
+    } catch (e) { pulseStatus.evidence = false; toast('⚠️', 'Evidence service unreachable', 'error'); }
+  } else { pulseStatus.evidence = null; }
 
   // Cases
+  cases = [];
   if (CASES_LIST) {
     try {
       const r = await lcCall(CASES_LIST, {});
       cases = (r.items || []).map(normaliseCase);
-    } catch (_) { cases = DEMO_CASES.map(x => ({...x})); }
-  } else {
-    cases = DEMO_CASES.map(x => ({...x}));
-  }
+      pulseStatus.cases = true;
+    } catch (e) { pulseStatus.cases = false; toast('⚠️', 'Cases service unreachable', 'error'); }
+  } else { pulseStatus.cases = null; }
 
   // Audit
+  audit = [];
   if (AUDIT_LIST) {
     try {
       const r = await lcCall(AUDIT_LIST, {});
       audit = (r.items || []).map(normaliseAudit);
-    } catch (_) { audit = [...DEMO_AUDIT]; }
-  } else {
-    audit = [...DEMO_AUDIT];
-  }
+      pulseStatus.audit = true;
+    } catch (e) { pulseStatus.audit = false; toast('⚠️', 'Audit service unreachable', 'error'); }
+  } else { pulseStatus.audit = null; }
+
+  // Storage health is implied: if any list call worked, Cosmos+Blob are reachable
+  const anyOk = pulseStatus.evidence || pulseStatus.cases || pulseStatus.audit;
+  pulseStatus.storage = ANY_LIVE ? !!anyOk : null;
 }
 
 // ─── NORMALISE ────────────────────────────────────────────────────────────────
@@ -942,6 +1242,7 @@ function normaliseEv(x) {
     notes:  x.notes  || '',
     tags:   Array.isArray(x.tags) ? x.tags : [],
     sha256: x.sha256 || x.sha256Hash || '',
+    blobPath: x.blobPath || '',
     flagged: Boolean(x.flagged || x.contentModeratorStatus === 'rejected'),
   };
 }
@@ -969,7 +1270,7 @@ function normaliseAudit(x) {
 // ─── API CALL ─────────────────────────────────────────────────────────────────
 async function apiCall(url, method = 'GET', body = null) {
   const headers = {};
-  if (token && token !== 'local-token') headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   if (body && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
 
   const res = await fetch(url, {
@@ -993,7 +1294,7 @@ async function apiCall(url, method = 'GET', body = null) {
 // Consumption HTTP triggers cannot natively respond to preflight).
 async function lcCall(url, payload) {
   if (!url) throw new Error('endpoint not configured');
-  const body = JSON.stringify({ ...(payload || {}), user: user?.email || 'analyst@threatvault.com' });
+  const body = JSON.stringify({ ...(payload || {}), user: user?.email || 'anonymous' });
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
@@ -1003,8 +1304,22 @@ async function lcCall(url, payload) {
   const ct = res.headers.get('content-type') || '';
   if (ct.includes('application/json')) data = await res.json();
   else if (res.status !== 204)         try { data = JSON.parse(await res.text()); } catch { data = {}; }
-  if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+  if (!res.ok) {
+    if (window.__tvTrack) window.__tvTrack('LogicApp.Error', { url, status: res.status, error: data.error || data.message });
+    throw new Error(data.error || data.message || `HTTP ${res.status}`);
+  }
   return data;
+}
+
+// ─── SAS-SIGNED BLOB URL ─────────────────────────────────────────────────────
+// The evidence blob container is private. The deploy script issues a 90-day
+// read-only SAS token, written into config.js. This helper builds a signed
+// URL the browser can fetch directly — zero-trust, no shared key in browser.
+function sasDownloadUrl(e) {
+  const s = (CFG.storage || {});
+  if (!s.blobEndpoint || !s.evidenceSas || !e) return '';
+  const path = (e.blobPath || `evidence/${e.id}.json`).replace(/^\/+/, '');
+  return `${s.blobEndpoint}${path}?${s.evidenceSas}`;
 }
 
 // ─── RENDER NAV ──────────────────────────────────────────────────────────────
@@ -1031,7 +1346,15 @@ function renderDashboard() {
   const recent = [...evidence].sort((a,b) => new Date(b.at) - new Date(a.at)).slice(0,5);
   const tbody = document.getElementById('dash-tbody');
   if (!recent.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-sm font-bold text-gray-400 dark:text-slate-500">No evidence yet. Upload to get started.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12">
+      <div class="flex flex-col items-center text-center gap-3">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center">
+          <span class="material-symbols-outlined text-3xl text-blue-500">inventory_2</span>
+        </div>
+        <p class="text-sm font-black text-gray-700 dark:text-slate-300">No evidence yet</p>
+        <p class="text-xs font-semibold text-gray-400 dark:text-slate-500">Drop your first file to begin chain-of-custody.</p>
+        <button onclick="showPage('upload',null)" class="mt-1 px-4 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-black hover:opacity-90">Upload Evidence</button>
+      </div></td></tr>`;
   } else {
     tbody.innerHTML = recent.map(e => `
       <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onclick="openEvModal('${esc(e.id)}')">
@@ -1044,6 +1367,67 @@ function renderDashboard() {
   }
 
   renderSeverityChart();
+  renderUploadsChart();
+  renderTopCasesChart();
+}
+
+let uploadsChart, topCasesChart;
+function renderUploadsChart() {
+  if (typeof Chart === 'undefined') return;
+  const ctx = document.getElementById('chart-uploads');
+  if (!ctx) return;
+  const days = [], counts = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0,10);
+    days.push(d.toLocaleDateString('en-GB',{weekday:'short'}));
+    counts.push(evidence.filter(e => String(e.at).slice(0,10) === key).length);
+  }
+  if (uploadsChart) uploadsChart.destroy();
+  const dark = document.documentElement.classList.contains('dark');
+  const textColor = dark ? '#94a3b8' : '#64748b';
+  const grid = dark ? 'rgba(148,163,184,.12)' : 'rgba(100,116,139,.12)';
+  uploadsChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: days, datasets: [{ data: counts, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.15)', fill: true, tension: .4, pointBackgroundColor: '#3b82f6', pointRadius: 4, borderWidth: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { displayColors: false } },
+      scales: {
+        x: { ticks: { color: textColor, font: { family: 'Space Grotesk', weight: 'bold', size: 10 } }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: textColor, precision: 0, font: { family: 'Space Grotesk', weight: 'bold', size: 10 } }, grid: { color: grid } }
+      }
+    }
+  });
+}
+
+function renderTopCasesChart() {
+  if (typeof Chart === 'undefined') return;
+  const ctx = document.getElementById('chart-topcases');
+  if (!ctx) return;
+  const counts = {};
+  evidence.forEach(e => { if (e.caseID) counts[e.caseID] = (counts[e.caseID] || 0) + 1; });
+  const top = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,5);
+  if (topCasesChart) topCasesChart.destroy();
+  const dark = document.documentElement.classList.contains('dark');
+  const textColor = dark ? '#94a3b8' : '#64748b';
+  const grid = dark ? 'rgba(148,163,184,.12)' : 'rgba(100,116,139,.12)';
+  const labels = top.length ? top.map(t => t[0]) : ['No data'];
+  const data   = top.length ? top.map(t => t[1]) : [0];
+  topCasesChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: ['#e63946','#f97316','#eab308','#3b82f6','#8b5cf6'], borderRadius: 6, borderSkipped: false }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { displayColors: false } },
+      scales: {
+        x: { beginAtZero: true, ticks: { color: textColor, precision: 0, font: { family: 'Space Grotesk', weight: 'bold', size: 10 } }, grid: { color: grid } },
+        y: { ticks: { color: textColor, font: { family: 'Space Grotesk', weight: 'bold', size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
 }
 
 function renderSeverityChart() {
@@ -1072,21 +1456,20 @@ function renderSeverityChart() {
 }
 
 // ─── SERVICE PULSE ────────────────────────────────────────────────────────────
+let lastPulseAt = null;
+let pulseTickTimer = null;
+
 async function renderServicePulse() {
-  // Logic App URLs include a built-in SAS so we cannot do anonymous /health probes.
-  // Instead we report status based on whether each endpoint group is configured —
-  // a successful loadData() upgrades the dot to "online".
-  const checks = HEALTH_CHECKS.length > 0 ? HEALTH_CHECKS : [
-    { name: 'Evidence Logic Apps', configured: !!EVIDENCE_LIST, online: !demoMode && evidence.length >= 0 },
-    { name: 'Cases Logic Apps',    configured: !!CASES_LIST,    online: !demoMode && cases.length >= 0    },
-    { name: 'Audit Logic Apps',    configured: !!AUDIT_LIST,    online: !demoMode && audit.length >= 0    },
-    { name: 'Blob + Cosmos DB',    configured: ANY_LIVE,        online: !demoMode },
+  const checks = [
+    { key: 'evidence', name: 'Evidence Logic Apps', configured: !!EVIDENCE_LIST },
+    { key: 'cases',    name: 'Cases Logic Apps',    configured: !!CASES_LIST    },
+    { key: 'audit',    name: 'Audit Logic Apps',    configured: !!AUDIT_LIST    },
+    { key: 'storage',  name: 'Blob + Cosmos DB',    configured: ANY_LIVE        },
   ];
 
   const results = checks.map(c => ({
     ...c,
-    ok: c.configured ? (c.online ? true : false) : null,
-    status: c.configured ? (c.online ? 200 : 0) : 0
+    ok: c.configured ? (pulseStatus[c.key] === true ? true : pulseStatus[c.key] === false ? false : null) : null,
   }));
 
   const host = document.getElementById('service-pulse');
@@ -1094,20 +1477,74 @@ async function renderServicePulse() {
 
   host.innerHTML = results.map(r => {
     const colour = r.ok === null ? 'bg-gray-400' : (r.ok ? 'bg-emerald-500' : 'bg-red-500');
-    const label  = r.ok === null ? 'NOT CONFIGURED' : (r.ok ? 'ONLINE' : `OFFLINE${r.status ? ' '+r.status : ''}`);
+    const label  = r.ok === null ? 'NOT SET' : (r.ok ? 'ONLINE' : 'OFFLINE');
     const lc     = r.ok === null ? 'text-gray-500' : (r.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400');
+    const clickable = r.configured ? `onclick="retryPulseRow('${r.key||''}')" title="Click to retry"` : '';
+    const cursor = r.configured ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700' : '';
     return `
-      <div class="flex items-center justify-between bg-gray-50 dark:bg-slate-700/50 rounded-xl px-3 py-2">
+      <div class="flex items-center justify-between bg-gray-50 dark:bg-slate-700/50 rounded-xl px-3 py-2 ${cursor} transition-colors" ${clickable}>
         <div class="flex items-center gap-2">
-          <span class="relative flex w-2 h-2">
+          <span class="relative flex w-2.5 h-2.5">
             ${r.ok ? `<span class="animate-ping absolute inline-flex w-full h-full rounded-full ${colour} opacity-60"></span>` : ''}
-            <span class="relative inline-flex w-2 h-2 rounded-full ${colour}"></span>
+            <span class="relative inline-flex w-2.5 h-2.5 rounded-full ${colour}"></span>
           </span>
           <span class="text-xs font-black text-gray-700 dark:text-slate-300">${esc(r.name)}</span>
         </div>
         <span class="text-[10px] font-black ${lc}">${label}</span>
       </div>`;
   }).join('');
+
+  if (lastPulseAt === null) lastPulseAt = Date.now();
+  updatePulseTimestamp();
+  if (pulseTickTimer) clearInterval(pulseTickTimer);
+  pulseTickTimer = setInterval(updatePulseTimestamp, 15000);
+}
+
+function updatePulseTimestamp() {
+  const el = document.getElementById('pulse-checked');
+  if (!el || lastPulseAt === null) return;
+  const s = Math.max(0, Math.round((Date.now() - lastPulseAt) / 1000));
+  let txt;
+  if (s < 5) txt = 'just now';
+  else if (s < 60) txt = `${s}s ago`;
+  else if (s < 3600) txt = `${Math.floor(s/60)}m ago`;
+  else txt = `${Math.floor(s/3600)}h ago`;
+  el.textContent = `checked ${txt}`;
+}
+
+async function refreshPulse() {
+  const host = document.getElementById('service-pulse');
+  if (host) host.innerHTML = `<div class="skel h-8 rounded-full"></div><div class="skel h-8 rounded-full"></div><div class="skel h-8 rounded-full"></div><div class="skel h-8 rounded-full"></div>`;
+  await loadData();
+  lastPulseAt = Date.now();
+  renderServicePulse();
+  renderDashboard();
+  toast('🔄', 'Pulse refreshed', 'info');
+}
+
+async function retryPulseRow(key) {
+  const map = {
+    evidence: { url: EVIDENCE_LIST, apply: r => evidence = (r.items||[]).map(normaliseEv) },
+    cases:    { url: CASES_LIST,    apply: r => cases    = (r.items||[]).map(normaliseCase) },
+    audit:    { url: AUDIT_LIST,    apply: r => audit    = (r.items||[]).map(normaliseAudit) },
+    storage:  { url: EVIDENCE_LIST || CASES_LIST || AUDIT_LIST, apply: () => {} },
+  };
+  const m = map[key];
+  if (!m || !m.url) return;
+  try {
+    const r = await lcCall(m.url, {});
+    m.apply(r);
+    pulseStatus[key] = true;
+    if (key !== 'storage') pulseStatus.storage = true;
+    lastPulseAt = Date.now();
+    renderServicePulse();
+    renderDashboard(); renderEvidence(evidence); renderCases(); renderAuditLog(audit);
+    toast('✅', `${key} reconnected`);
+  } catch (e) {
+    pulseStatus[key] = false;
+    renderServicePulse();
+    toast('❌', `${key} still offline`);
+  }
 }
 
 function updateRegionBadge() {
@@ -1122,7 +1559,17 @@ function renderEvidence(items) {
   if (cnt) cnt.textContent = `${items.length} item${items.length !== 1 ? 's' : ''}`;
 
   if (!items.length) {
-    host.innerHTML = `<div class="col-span-3 py-20 text-center"><p class="text-sm font-bold text-gray-400 dark:text-slate-500">No evidence matches filters.</p></div>`;
+    const filtered = evidence.length > 0;
+    host.innerHTML = `<div class="col-span-3 py-16 flex flex-col items-center text-center gap-3">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center">
+        <span class="material-symbols-outlined text-3xl text-blue-500">${filtered ? 'filter_alt_off' : 'perm_media'}</span>
+      </div>
+      <p class="text-sm font-black text-gray-700 dark:text-slate-300">${filtered ? 'No evidence matches your filters' : 'No evidence yet'}</p>
+      <p class="text-xs font-semibold text-gray-400 dark:text-slate-500">${filtered ? 'Try clearing filters or adjusting search.' : 'Upload chain-of-custody artifacts to get started.'}</p>
+      ${filtered
+        ? `<button onclick="resetEvidenceFilters()" class="mt-1 px-4 py-2 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 text-xs font-black">Clear Filters</button>`
+        : `<button onclick="showPage('upload',null)" class="mt-1 px-4 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-black hover:opacity-90">Upload Evidence</button>`}
+    </div>`;
     return;
   }
 
@@ -1155,11 +1602,27 @@ function filterEvidence(searchOverride) {
   ));
 }
 
+function resetEvidenceFilters() {
+  ['f-case','f-type','f-sev'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const g = document.getElementById('g-search'); if (g) g.value = '';
+  filterEvidence('');
+}
+
 // ─── CASES ────────────────────────────────────────────────────────────────────
 function renderCases() {
   const tbody = document.getElementById('cases-tbody');
   if (!cases.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-sm font-bold text-gray-400 dark:text-slate-500">No cases yet. <button onclick="openCaseModal()" class="text-blue-600 dark:text-blue-400 underline font-black">Create one</button>.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-14">
+      <div class="flex flex-col items-center text-center gap-3">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-100 to-blue-100 dark:from-emerald-900/30 dark:to-blue-900/30 flex items-center justify-center">
+          <span class="material-symbols-outlined text-3xl text-emerald-600">folder_open</span>
+        </div>
+        <p class="text-sm font-black text-gray-700 dark:text-slate-300">No cases opened</p>
+        <p class="text-xs font-semibold text-gray-400 dark:text-slate-500">Create a case to start grouping related evidence.</p>
+        <button onclick="openCaseModal()" class="mt-1 px-4 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-black hover:opacity-90 flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">add</span> New Case
+        </button>
+      </div></td></tr>`;
     return;
   }
   tbody.innerHTML = cases.map(c => `
@@ -1182,13 +1645,19 @@ function renderCases() {
 
 function openCaseModal() {
   document.getElementById('nc-title').value = '';
+  clearFieldErrs('nc-title-err');
   document.getElementById('case-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('nc-title')?.focus(), 50);
+}
+function closeCaseModal() {
+  document.getElementById('case-modal').classList.add('hidden');
 }
 
 async function createCase() {
   const title    = (document.getElementById('nc-title').value || '').trim();
   const priority = document.getElementById('nc-priority').value;
-  if (!title) return toast('⚠️', 'Case title required');
+  clearFieldErrs('nc-title-err');
+  if (!title) { showFieldErr('nc-title-err','Case title is required.'); return; }
 
   const newCase = {
     id: 'CASE-' + new Date().getFullYear() + '-' + String(cases.length + 1).padStart(3,'0'),
@@ -1210,9 +1679,10 @@ async function createCase() {
   }
 
   addAuditEntry('CREATE', newCase.id);
-  document.getElementById('case-modal').classList.add('hidden');
+  closeCaseModal();
   renderCases(); renderCaseDropdowns(); renderDashboard();
   toast('✅', 'Case created');
+  if (window.__tvTrack) window.__tvTrack('Case.Create', { id: c.id, priority: c.priority });
 }
 
 async function editCase(id) {
@@ -1300,6 +1770,8 @@ async function submitEvidence() {
   if (!pendingFile) return toast('⚠️', 'Select a file to upload');
 
   document.getElementById('submit-btn').disabled = true;
+  document.getElementById('submit-spin')?.classList.remove('hidden');
+  document.getElementById('submit-txt') && (document.getElementById('submit-txt').textContent = 'Submitting…');
   const prog = document.getElementById('up-progress');
   prog.classList.remove('hidden');
   const steps = ['ps-hash','ps-upload','ps-meta','ps-audit','ps-done'];
@@ -1361,6 +1833,22 @@ async function submitEvidence() {
     if (c) c.count = (c.count || 0) + 1;
 
     toast('✅', 'Evidence submitted successfully');
+    const submitted = evidence[0];
+    if (window.__tvTrack) window.__tvTrack('Evidence.Create', { id: submitted?.id, caseID: submitted?.caseID, ext: submitted?.ext });
+    // Fire-and-forget Azure AI Content Safety review of the title + notes.
+    // The Logic App patches the Cosmos doc with flagged:true if any category ≥ severity 4.
+    if (EVIDENCE_MODERATE && submitted?.id) {
+      const text = `${submitted.title || ''}\n${submitted.notes || ''}`.trim().slice(0, 1000);
+      lcCall(EVIDENCE_MODERATE, { id: submitted.id, caseID: submitted.caseID, text })
+        .then(r => {
+          if (r && r.flagged) {
+            submitted.flagged = true;
+            renderEvidence(evidence); renderDashboard();
+            toast('⚑', 'Evidence flagged by Content Safety');
+          }
+        })
+        .catch(() => {});
+    }
     await sleep(600);
 
     // Reset form
@@ -1378,6 +1866,8 @@ async function submitEvidence() {
     prog.classList.add('hidden');
     steps.forEach(s => { const el = document.getElementById(s); if(el) el.classList.remove('running','done'); });
     document.getElementById('submit-btn').disabled = !pendingFile;
+    document.getElementById('submit-spin')?.classList.add('hidden');
+    if (document.getElementById('submit-txt')) document.getElementById('submit-txt').textContent = 'Submit to Platform';
   }
 }
 
@@ -1433,6 +1923,7 @@ function openEvModal(id) {
         <p class="text-sm font-semibold text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4">${esc(e.notes)}</p>
       </div>` : ''}
       <div class="flex justify-end gap-3 pt-2">
+        ${sasDownloadUrl(e) ? `<a href="${sasDownloadUrl(e)}" target="_blank" rel="noopener" class="px-5 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">⤓ Download (SAS)</a>` : ''}
         <button onclick="deleteEv('${esc(e.id)}');closeEvModal()" class="px-5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">Delete</button>
         <button onclick="editEv('${esc(e.id)}')" class="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-slate-200 font-bold text-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Edit</button>
         <button onclick="closeEvModal()" class="px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm hover:opacity-90">Close</button>
@@ -1483,7 +1974,14 @@ function addAuditEntry(action, res) {
 function renderAuditLog(items) {
   const tbody = document.getElementById('audit-tbody');
   if (!items.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-xs font-bold text-gray-400 dark:text-slate-500">No audit events.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-14">
+      <div class="flex flex-col items-center text-center gap-3">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/30 dark:to-yellow-900/30 flex items-center justify-center">
+          <span class="material-symbols-outlined text-3xl text-orange-500">history</span>
+        </div>
+        <p class="text-sm font-black text-gray-700 dark:text-slate-300">No audit events</p>
+        <p class="text-xs font-semibold text-gray-400 dark:text-slate-500">Activity will appear here as you create, update, or read evidence.</p>
+      </div></td></tr>`;
     return;
   }
   tbody.innerHTML = items.slice(0,50).map(a => `
@@ -1517,6 +2015,55 @@ async function filterAuditLogs() {
   toast('✅', `${filtered.length} audit entries`);
 }
 
+// ─── ANOMALY SCAN — calls la-audit-anomaly Logic App (cyber-threat pattern recognition) ──
+async function runAnomalyScan() {
+  const panel = document.getElementById('anomaly-panel');
+  const body  = document.getElementById('anomaly-body');
+  const meta  = document.getElementById('anomaly-meta');
+  panel.classList.remove('hidden');
+  body.innerHTML = '<div class="text-gray-400">Scanning audit telemetry…</div>';
+  meta.textContent = '';
+
+  let items = audit;
+  let threshold = 5;
+  if (AUDIT_ANOMALY) {
+    try {
+      const r = await lcCall(AUDIT_ANOMALY, { threshold });
+      items = (r.items || []).map(normaliseAudit);
+      threshold = r.threshold || threshold;
+    } catch (_) { /* fall back to local audit[] */ }
+  }
+
+  // Group by user, count actions in last 60 min, flag anyone >= threshold.
+  const cutoff = Date.now() - 60 * 60 * 1000;
+  const counts = {};
+  for (const a of items) {
+    const t = Date.parse(a.ts);
+    if (isFinite(t) && t < cutoff) continue;
+    counts[a.user] = (counts[a.user] || 0) + 1;
+  }
+  const rows = Object.entries(counts)
+    .map(([user, count]) => ({ user, count, anomaly: count >= threshold }))
+    .sort((a,b) => b.count - a.count);
+
+  meta.textContent = `${items.length} events · threshold ≥ ${threshold}/hr`;
+  if (!rows.length) {
+    body.innerHTML = '<div class="text-gray-400">No recent activity.</div>';
+    return;
+  }
+  body.innerHTML = `
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      ${rows.slice(0, 12).map(r => `
+        <div class="flex items-center justify-between rounded-xl px-3 py-2 ${r.anomaly ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50' : 'bg-gray-50 dark:bg-slate-700/40'}">
+          <span class="font-mono text-[11px] truncate">${esc(r.user)}</span>
+          <span class="text-xs font-black ${r.anomaly ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-slate-400'}">
+            ${r.count}${r.anomaly ? ' ⚑' : ''}
+          </span>
+        </div>`).join('')}
+    </div>`;
+  if (window.__tvTrack) window.__tvTrack('Audit.AnomalyScan', { events: items.length, anomalies: rows.filter(r=>r.anomaly).length });
+}
+
 function exportAuditCSV() {
   const headers = ['Action','User','Resource','IP','Timestamp'];
   const rows = audit.map(a => [a.action, a.user, a.res, a.ip, a.ts].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','));
@@ -1530,53 +2077,96 @@ function exportAuditCSV() {
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
 function renderSettingsPage() {
-  document.getElementById('prof-email').textContent  = user?.email || '';
-  document.getElementById('prof-name').textContent   = user?.name  || '';
-  document.getElementById('prof-role').textContent   = user?.role  || 'Analyst';
-  document.getElementById('prof-region').textContent = REGION;
-  document.getElementById('cfg-region').textContent  = REGION;
+  const e = document.getElementById('pf-email'); if (e) e.value = user?.email || '';
+  const n = document.getElementById('pf-name');  if (n) n.value = user?.name  || '';
+  const r = document.getElementById('pf-role');  if (r) r.value = user?.role  || 'Analyst';
+  const reg = document.getElementById('prof-region'); if (reg) reg.textContent = REGION;
+  const cfg = document.getElementById('cfg-region');  if (cfg) cfg.textContent = REGION;
+  const idp = document.getElementById('cfg-idp');     if (idp) idp.textContent = AUTH_LIVE ? 'Logic Apps Auth' : 'Local Auth';
 }
 
 async function changePassword() {
   const cur  = document.getElementById('cp-cur').value;
   const np   = document.getElementById('cp-new').value;
   const np2  = document.getElementById('cp-new2').value;
-  if (!cur)               return toast('⚠️', 'Enter current password');
-  if (np.length < MIN_PASS) return toast('⚠️', `New password must be at least ${MIN_PASS} characters`);
-  if (np !== np2)           return toast('⚠️', 'Passwords do not match');
 
-  if (AUTH_URL) {
-    try {
-      await apiCall(`${AUTH_URL}/auth/change-password`, 'POST', { currentPassword: cur, newPassword: np });
-    } catch (_) {
-      toast('⚠️', 'Auth service unreachable — updating local only');
-    }
+  clearFieldErrs('cp-cur-err','cp-new-err','cp-new2-err');
+  let bad = false;
+  if (!cur)               { showFieldErr('cp-cur-err','Enter current password.'); bad = true; }
+  if (np.length < MIN_PASS) { showFieldErr('cp-new-err',`Must be at least ${MIN_PASS} characters.`); bad = true; }
+  if (np !== np2)           { showFieldErr('cp-new2-err','Passwords do not match.'); bad = true; }
+  if (bad) return;
+
+  if (!AUTH_PASSWORD || !user?.email) {
+    showFieldErr('cp-cur-err','Password service is not configured.');
+    return;
   }
-
-  // Update local store
-  const users = getLocalUsers();
-  const u = users.find(x => x.email === user?.email);
-  if (u) { u.password = np; saveLocalUsers(users); }
-
-  ['cp-cur','cp-new','cp-new2'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
-  toast('✅', 'Password changed');
+  try {
+    const currentHash = await hashPwd(user.email, cur);
+    const newHash     = await hashPwd(user.email, np);
+    const r = await lcCall(AUTH_PASSWORD, { email: user.email, currentHash, newHash });
+    if (r && r.ok) {
+      ['cp-cur','cp-new','cp-new2'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+      toast('✅', 'Password changed');
+      return;
+    }
+    showFieldErr('cp-cur-err', (r && r.error) || 'Could not update password.');
+  } catch (_) {
+    showFieldErr('cp-cur-err','Auth service unreachable.');
+  }
 }
 
 async function deleteAccount() {
   if (!user?.email) return;
-  if (!confirm(`Permanently delete account ${user.email}? This cannot be undone.`)) return;
+  const pass = prompt(`Confirm your password to permanently delete ${user.email}:`);
+  if (!pass) return;
   const email = user.email;
 
-  if (AUTH_URL) {
-    try { await apiCall(`${AUTH_URL}/auth/delete-account`, 'POST', { email }); }
-    catch (_) { toast('⚠️', 'Auth service unreachable — removing locally'); }
+  if (!AUTH_DELETE) {
+    toast('❌', 'Account deletion service is not configured.', 'error');
+    return;
+  }
+  try {
+    const passwordHash = await hashPwd(email, pass);
+    const r = await lcCall(AUTH_DELETE, { email, passwordHash });
+    if (!r || !r.ok) {
+      toast('❌', (r && r.error) || 'Account deletion failed', 'error');
+      return;
+    }
+  } catch (_) {
+    toast('❌', 'Auth service unreachable.', 'error');
+    return;
   }
 
-  const users = getLocalUsers().filter(u => u.email !== email);
-  saveLocalUsers(users);
-  try { localStorage.removeItem('tv_token'); localStorage.removeItem('tv_user'); } catch (_) {}
   toast('🗑️', 'Account deleted');
   setTimeout(() => doLogout(), 600);
+}
+
+// ─── PROFILE UPDATE ───────────────────────────────────────────────────────────
+async function updateProfile() {
+  const newName = (document.getElementById('pf-name').value || '').trim();
+  const newRole = (document.getElementById('pf-role').value || '').trim();
+  clearFieldErrs('pf-name-err');
+  if (!newName) { showFieldErr('pf-name-err','Display name required.'); return; }
+  if (!user?.email) return;
+
+  if (!AUTH_PROFILE) {
+    showFieldErr('pf-name-err','Profile service is not configured.');
+    return;
+  }
+  try {
+    const r = await lcCall(AUTH_PROFILE, { email: user.email, newName, newRole });
+    if (r && r.ok && r.user) {
+      user = { ...user, name: r.user.name, role: r.user.role };
+      sessionStorage.setItem('tv_user', JSON.stringify(user));
+      renderNav(); renderSettingsPage();
+      toast('✅', 'Profile updated');
+      return;
+    }
+    showFieldErr('pf-name-err', (r && r.error) || 'Profile update failed.');
+  } catch (_) {
+    showFieldErr('pf-name-err','Auth service unreachable.');
+  }
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -1626,32 +2216,70 @@ function toggleTheme() {
   const dark = document.documentElement.classList.toggle('dark');
   localStorage.setItem('tv_theme', dark ? 'dark' : 'light');
   updateThemeIcon();
-  if (sevChart) renderSeverityChart(); // redraw with new colours
+  if (sevChart) renderSeverityChart();
+  if (uploadsChart) renderUploadsChart();
+  if (topCasesChart) renderTopCasesChart();
 }
 function updateThemeIcon() {
+  const dark = document.documentElement.classList.contains('dark');
+  const txt = dark ? 'light_mode' : 'dark_mode';
   const icon = document.getElementById('theme-icon');
-  if (icon) icon.textContent = document.documentElement.classList.contains('dark') ? 'light_mode' : 'dark_mode';
+  if (icon) icon.textContent = txt;
+  const li = document.getElementById('landing-theme-icon');
+  if (li) li.textContent = txt;
 }
 
-// Toast
-function toast(icon, msg) {
+// Toast — kind auto-detected from icon if not given (success/error/warning/info)
+function toast(icon, msg, kind) {
   const t = document.getElementById('toast');
+  if (!kind) {
+    if (icon === '✅') kind = 'success';
+    else if (icon === '❌') kind = 'error';
+    else if (icon === '⚠️') kind = 'warning';
+    else kind = 'info';
+  }
   document.getElementById('t-icon').textContent = icon;
   document.getElementById('t-msg').textContent  = String(msg).slice(0, 80);
-  t.classList.remove('hidden');
+  t.classList.remove('hidden','toast-success','toast-error','toast-warning','toast-info');
+  t.classList.add('toast-' + kind);
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.add('hidden'), 3200);
 }
+
+// ─── BOTTOM TAB SYNC ──────────────────────────────────────────────────────────
+function syncBottomTab(name) {
+  document.querySelectorAll('#bottom-tabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === name);
+  });
+}
+
+// ─── KEYBOARD SHORTCUTS ───────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  // Cmd/Ctrl+K — focus global search
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    const g = document.getElementById('g-search');
+    if (g && document.getElementById('app-shell')?.classList.contains('active')) {
+      g.focus(); g.select();
+    }
+    return;
+  }
+  // Esc — close any open modal
+  if (e.key === 'Escape') {
+    const ev = document.getElementById('ev-modal');
+    const cm = document.getElementById('case-modal');
+    if (ev && !ev.classList.contains('hidden')) closeEvModal();
+    if (cm && !cm.classList.contains('hidden')) closeCaseModal();
+  }
+});
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 function boot() {
   updateThemeIcon();
   if (token && user) {
-    // Restore session
-    demoMode = !AUTH_URL;
     initApp();
   } else {
-    showScreen('login-screen');
+    showScreen('landing-screen');
     setAuthTab('login');
   }
 }

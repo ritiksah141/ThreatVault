@@ -2,7 +2,10 @@
   "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "$connections": { "type": "Object", "defaultValue": {} }
+    "$connections": {
+      "type": "Object",
+      "defaultValue": {}
+    }
   },
   "triggers": {
     "manual": {
@@ -13,10 +16,17 @@
         "schema": {
           "type": "object",
           "properties": {
-            "id":     { "type": "string" },
-            "caseID": { "type": "string" }
+            "id": {
+              "type": "string"
+            },
+            "caseID": {
+              "type": "string"
+            }
           },
-          "required": ["id","caseID"]
+          "required": [
+            "id",
+            "caseID"
+          ]
         }
       }
     }
@@ -25,54 +35,84 @@
     "Delete_doc": {
       "type": "ApiConnection",
       "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
         "method": "delete",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
         "headers": {
-          "x-ms-documentdb-raw-partitionkey": "[\"@{json(triggerBody())?['caseID']}\"]"
+          "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['caseID']}"
         }
       }
     },
     "Delete_blob": {
       "type": "ApiConnection",
-      "runAfter": { "Delete_doc": [ "Succeeded", "Failed" ] },
+      "runAfter": {
+        "Delete_doc": [
+          "Succeeded",
+          "Failed"
+        ]
+      },
       "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['azureblob']['connectionId']" } },
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['azureblob']['connectionId']"
+          }
+        },
         "method": "delete",
         "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/files/@{encodeURIComponent(encodeURIComponent(concat('/evidence/', json(triggerBody())?['id'], '.json')))}"
       }
     },
     "Audit_delete": {
       "type": "ApiConnection",
-      "runAfter": { "Delete_blob": [ "Succeeded", "Failed" ] },
+      "runAfter": {
+        "Delete_blob": [
+          "Succeeded",
+          "Failed"
+        ]
+      },
       "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
         "method": "post",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
         "headers": {
           "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]"
         },
         "body": {
-          "id":     "@{guid()}",
+          "id": "@{guid()}",
           "action": "DELETE",
-          "user":   "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
-          "res":    "@json(triggerBody())?['id']",
-          "ip":     "—",
-          "ts":     "@utcNow()"
+          "user": "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
+          "res": "@json(triggerBody())?['id']",
+          "ip": "\u2014",
+          "ts": "@utcNow()"
         }
       }
     },
     "Response": {
       "type": "Response",
       "kind": "Http",
-      "runAfter": { "Audit_delete": [ "Succeeded", "Failed" ] },
+      "runAfter": {
+        "Audit_delete": [
+          "Succeeded",
+          "Failed"
+        ]
+      },
       "inputs": {
         "statusCode": 200,
         "headers": {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*"
         },
-        "body": { "ok": true, "id": "@json(triggerBody())?['id']" }
+        "body": {
+          "ok": true,
+          "id": "@json(triggerBody())?['id']"
+        }
       }
     }
   },

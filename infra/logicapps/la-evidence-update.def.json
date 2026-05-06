@@ -2,7 +2,10 @@
   "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "$connections": { "type": "Object", "defaultValue": {} }
+    "$connections": {
+      "type": "Object",
+      "defaultValue": {}
+    }
   },
   "triggers": {
     "manual": {
@@ -13,11 +16,20 @@
         "schema": {
           "type": "object",
           "properties": {
-            "id":     { "type": "string" },
-            "caseID": { "type": "string" },
-            "title":  { "type": "string" }
+            "id": {
+              "type": "string"
+            },
+            "caseID": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
           },
-          "required": ["id","caseID"]
+          "required": [
+            "id",
+            "caseID"
+          ]
         }
       }
     }
@@ -26,63 +38,94 @@
     "Get_doc": {
       "type": "ApiConnection",
       "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
         "method": "get",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
         "headers": {
-          "x-ms-documentdb-raw-partitionkey": "[\"@{json(triggerBody())?['caseID']}\"]"
+          "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['caseID']}"
         }
       }
     },
     "Compose_updated": {
       "type": "Compose",
-      "runAfter": { "Get_doc": [ "Succeeded" ] },
+      "runAfter": {
+        "Get_doc": [
+          "Succeeded"
+        ]
+      },
       "inputs": "@union(body('Get_doc'), json(concat('{\"title\":\"', coalesce(json(triggerBody())?['title'], body('Get_doc')?['title']), '\",\"updatedAt\":\"', utcNow(), '\"}')))"
     },
     "Replace_doc": {
       "type": "ApiConnection",
-      "runAfter": { "Compose_updated": [ "Succeeded" ] },
+      "runAfter": {
+        "Compose_updated": [
+          "Succeeded"
+        ]
+      },
       "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
         "method": "put",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
         "headers": {
-          "x-ms-documentdb-raw-partitionkey": "[\"@{json(triggerBody())?['caseID']}\"]"
+          "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['caseID']}"
         },
         "body": "@outputs('Compose_updated')"
       }
     },
     "Audit_update": {
       "type": "ApiConnection",
-      "runAfter": { "Replace_doc": [ "Succeeded" ] },
+      "runAfter": {
+        "Replace_doc": [
+          "Succeeded"
+        ]
+      },
       "inputs": {
-        "host": { "connection": { "name": "@parameters('$connections')['documentdb']['connectionId']" } },
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
         "method": "post",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
         "headers": {
           "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]"
         },
         "body": {
-          "id":     "@{guid()}",
+          "id": "@{guid()}",
           "action": "UPDATE",
-          "user":   "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
-          "res":    "@json(triggerBody())?['id']",
-          "ip":     "—",
-          "ts":     "@utcNow()"
+          "user": "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
+          "res": "@json(triggerBody())?['id']",
+          "ip": "\u2014",
+          "ts": "@utcNow()"
         }
       }
     },
     "Response": {
       "type": "Response",
       "kind": "Http",
-      "runAfter": { "Audit_update": [ "Succeeded", "Failed" ] },
+      "runAfter": {
+        "Audit_update": [
+          "Succeeded",
+          "Failed"
+        ]
+      },
       "inputs": {
         "statusCode": 200,
         "headers": {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*"
         },
-        "body": { "evidence": "@outputs('Compose_updated')" }
+        "body": {
+          "evidence": "@outputs('Compose_updated')"
+        }
       }
     }
   },

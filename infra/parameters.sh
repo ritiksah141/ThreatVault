@@ -29,6 +29,7 @@ COSMOS_DB="${COSMOS_DB:-threatvault}"                # Database
 COSMOS_EVIDENCE="${COSMOS_EVIDENCE:-evidence}"       # Containers
 COSMOS_CASES="${COSMOS_CASES:-cases}"
 COSMOS_AUDIT="${COSMOS_AUDIT:-audit}"
+COSMOS_USERS="${COSMOS_USERS:-users}"
 
 LAW_NAME="${LAW_NAME:-law-threatvault}"              # Log Analytics workspace
 APPI_NAME="${APPI_NAME:-appi-threatvault}"           # Application Insights
@@ -49,6 +50,13 @@ LA_CS_UPDATE="${LA_CS_UPDATE:-la-cases-update}"
 LA_CS_DELETE="${LA_CS_DELETE:-la-cases-delete}"
 LA_AU_LIST="${LA_AU_LIST:-la-audit-logs}"
 LA_AU_LOG="${LA_AU_LOG:-la-audit-quicklog}"
+LA_AUTH_LOGIN="${LA_AUTH_LOGIN:-la-auth-login}"
+LA_AUTH_REGISTER="${LA_AUTH_REGISTER:-la-auth-register}"
+LA_AUTH_PASSWORD="${LA_AUTH_PASSWORD:-la-auth-password}"
+LA_AUTH_PROFILE="${LA_AUTH_PROFILE:-la-auth-profile}"
+LA_AUTH_DELETE="${LA_AUTH_DELETE:-la-auth-delete}"
+LA_EV_MODERATE="${LA_EV_MODERATE:-la-evidence-moderate}"   # Azure AI Content Safety
+LA_AU_ANOMALY="${LA_AU_ANOMALY:-la-audit-anomaly}"         # Threshold-based anomaly detection
 
 # Static Web App (frontend host)
 SWA_NAME="${SWA_NAME:-swa-threatvault-${SUFFIX}}"

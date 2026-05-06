@@ -16,22 +16,25 @@
         "schema": {
           "type": "object",
           "properties": {
-            "id": {
+            "email": {
               "type": "string"
             },
-            "status": {
+            "newName": {
+              "type": "string"
+            },
+            "newRole": {
               "type": "string"
             }
           },
           "required": [
-            "id"
+            "email"
           ]
         }
       }
     }
   },
   "actions": {
-    "Get_case": {
+    "Get_user": {
       "type": "ApiConnection",
       "inputs": {
         "host": {
@@ -40,22 +43,22 @@
           }
         },
         "method": "get",
-        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('cases')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('users')}/docs/@{encodeURIComponent(toLower(json(triggerBody())?['email']))}",
         "headers": {
-          "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['id']}"
+          "x-ms-documentdb-partitionkey": "@{toLower(json(triggerBody())?['email'])}"
         }
       }
     },
     "Compose_updated": {
       "type": "Compose",
       "runAfter": {
-        "Get_case": [
+        "Get_user": [
           "Succeeded"
         ]
       },
-      "inputs": "@union(body('Get_case'), json(concat('{\"status\":\"', coalesce(json(triggerBody())?['status'], body('Get_case')?['status']), '\",\"updated\":\"', utcNow(), '\"}')))"
+      "inputs": "@union(body('Get_user'), json(concat('{\"name\":\"', coalesce(json(triggerBody())?['newName'], body('Get_user')?['name']), '\",\"role\":\"', coalesce(json(triggerBody())?['newRole'], body('Get_user')?['role'], 'Analyst'), '\",\"updatedAt\":\"', utcNow(), '\"}')))"
     },
-    "Replace_case": {
+    "Replace_user": {
       "type": "ApiConnection",
       "runAfter": {
         "Compose_updated": [
@@ -69,17 +72,17 @@
           }
         },
         "method": "put",
-        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('cases')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('users')}/docs/@{encodeURIComponent(toLower(json(triggerBody())?['email']))}",
         "headers": {
-          "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['id']}"
+          "x-ms-documentdb-partitionkey": "@{toLower(json(triggerBody())?['email'])}"
         },
         "body": "@outputs('Compose_updated')"
       }
     },
-    "Audit": {
+    "Audit_profile": {
       "type": "ApiConnection",
       "runAfter": {
-        "Replace_case": [
+        "Replace_user": [
           "Succeeded"
         ]
       },
@@ -92,23 +95,23 @@
         "method": "post",
         "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
         "headers": {
-          "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]"
+          "x-ms-documentdb-raw-partitionkey": "[\"@{toLower(json(triggerBody())?['email'])}\"]"
         },
         "body": {
           "id": "@{guid()}",
-          "action": "UPDATE",
-          "user": "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
-          "res": "@json(triggerBody())?['id']",
+          "action": "PROFILE_UPDATE",
+          "user": "@{toLower(json(triggerBody())?['email'])}",
+          "res": "auth-service",
           "ip": "\u2014",
           "ts": "@utcNow()"
         }
       }
     },
-    "Response": {
+    "Response_ok": {
       "type": "Response",
       "kind": "Http",
       "runAfter": {
-        "Audit": [
+        "Audit_profile": [
           "Succeeded",
           "Failed"
         ]
@@ -120,7 +123,33 @@
           "Access-Control-Allow-Origin": "*"
         },
         "body": {
-          "case": "@outputs('Compose_updated')"
+          "ok": true,
+          "user": {
+            "userId": "@{outputs('Compose_updated')?['email']}",
+            "email": "@{outputs('Compose_updated')?['email']}",
+            "name": "@{outputs('Compose_updated')?['name']}",
+            "role": "@{outputs('Compose_updated')?['role']}"
+          }
+        }
+      }
+    },
+    "Response_no_user": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": {
+        "Get_user": [
+          "Failed"
+        ]
+      },
+      "inputs": {
+        "statusCode": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": {
+          "ok": false,
+          "error": "User not found"
         }
       }
     }

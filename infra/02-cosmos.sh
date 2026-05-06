@@ -38,6 +38,7 @@ create_container() {
 create_container "$COSMOS_EVIDENCE" "/caseID"
 create_container "$COSMOS_CASES"    "/id"
 create_container "$COSMOS_AUDIT"    "/user"
+create_container "$COSMOS_USERS"    "/email"
 
 # Persist key + endpoint
 KEY="$(az cosmosdb keys list -n "$COSMOS_NAME" -g "$RG_NAME" --query primaryMasterKey -o tsv)"

@@ -1,0 +1,178 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "type": "Object",
+      "defaultValue": {}
+    }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "fullName": {
+              "type": "string"
+            },
+            "passwordHash": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "email",
+            "passwordHash"
+          ]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Try_get": {
+      "type": "ApiConnection",
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
+        "method": "get",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('users')}/docs/@{encodeURIComponent(toLower(json(triggerBody())?['email']))}",
+        "headers": {
+          "x-ms-documentdb-partitionkey": "@{toLower(json(triggerBody())?['email'])}"
+        }
+      }
+    },
+    "Response_exists": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": {
+        "Try_get": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "statusCode": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": {
+          "ok": false,
+          "error": "Email already registered"
+        }
+      }
+    },
+    "Insert_user": {
+      "type": "ApiConnection",
+      "runAfter": {
+        "Try_get": [
+          "Failed"
+        ]
+      },
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
+        "method": "post",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('users')}/docs",
+        "headers": {
+          "x-ms-documentdb-raw-partitionkey": "[\"@{toLower(json(triggerBody())?['email'])}\"]"
+        },
+        "body": {
+          "id": "@{toLower(json(triggerBody())?['email'])}",
+          "email": "@{toLower(json(triggerBody())?['email'])}",
+          "name": "@{coalesce(json(triggerBody())?['fullName'], 'Analyst')}",
+          "passwordHash": "@{json(triggerBody())?['passwordHash']}",
+          "role": "Analyst",
+          "createdAt": "@{utcNow()}"
+        }
+      }
+    },
+    "Audit_register": {
+      "type": "ApiConnection",
+      "runAfter": {
+        "Insert_user": [
+          "Succeeded"
+        ]
+      },
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['documentdb']['connectionId']"
+          }
+        },
+        "method": "post",
+        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
+        "headers": {
+          "x-ms-documentdb-raw-partitionkey": "[\"@{toLower(json(triggerBody())?['email'])}\"]"
+        },
+        "body": {
+          "id": "@{guid()}",
+          "action": "REGISTER",
+          "user": "@{toLower(json(triggerBody())?['email'])}",
+          "res": "auth-service",
+          "ip": "\u2014",
+          "ts": "@utcNow()"
+        }
+      }
+    },
+    "Response_ok": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": {
+        "Audit_register": [
+          "Succeeded",
+          "Failed"
+        ]
+      },
+      "inputs": {
+        "statusCode": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": {
+          "ok": true,
+          "user": {
+            "userId": "@{toLower(json(triggerBody())?['email'])}",
+            "email": "@{toLower(json(triggerBody())?['email'])}",
+            "name": "@{coalesce(json(triggerBody())?['fullName'], 'Analyst')}",
+            "role": "Analyst"
+          },
+          "token": "@{concat('live-', guid())}"
+        }
+      }
+    },
+    "Response_err": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": {
+        "Insert_user": [
+          "Failed"
+        ]
+      },
+      "inputs": {
+        "statusCode": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": {
+          "ok": false,
+          "error": "Registration failed"
+        }
+      }
+    }
+  },
+  "outputs": {}
+}
