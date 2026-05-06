@@ -1151,6 +1151,10 @@ function doLogout() {
   toast('👋', 'Signed out');
 }
 
+// ─── PERMISSIONS ───────────────────────────────────────────────────────────────
+function isAdmin() { return user?.role === 'Admin'; }
+function canModifyEv(e) { return isAdmin() || e.by === user?.email; }
+
 // ─── INIT APP ──────────────────────────────────────────────────────────────────
 async function initApp() {
   showScreen('app-shell');
@@ -1829,7 +1833,8 @@ async function submitEvidence() {
           title, caseID, cvss, ext,
           fileName: pendingFile.name,
           fileSize: pendingFile.size,
-          sha256
+          sha256,
+          user: user?.email
         });
         const ev = normaliseEv(r.evidence || r);
         // Push the actual file bytes to private blob storage using the
@@ -1846,11 +1851,11 @@ async function submitEvidence() {
         }
         evidence.unshift(ev);
       } catch (_) {
-        evidence.unshift(normaliseEv({ id: newId, title, caseID, ext, cvss, sha256, by: user?.name || 'Analyst', at: new Date().toISOString(), notes:'', tags:[] }));
+        evidence.unshift(normaliseEv({ id: newId, title, caseID, ext, cvss, sha256, by: user?.email || user?.name || 'Analyst', at: new Date().toISOString(), notes:'', tags:[] }));
         toast('⚠️', 'Saved locally — evidence service unreachable');
       }
     } else {
-      evidence.unshift(normaliseEv({ id: newId, title, caseID, ext, cvss, sha256, by: user?.name || 'Analyst', at: new Date().toISOString(), notes:'', tags:[] }));
+      evidence.unshift(normaliseEv({ id: newId, title, caseID, ext, cvss, sha256, by: user?.email || user?.name || 'Analyst', at: new Date().toISOString(), notes:'', tags:[] }));
     }
     step(steps[1], 'done');
 
@@ -1969,8 +1974,9 @@ function openEvModal(id) {
       </div>` : ''}
       <div class="flex justify-end gap-3 pt-2">
         ${sasDownloadUrl(e) ? `<a href="${sasDownloadUrl(e)}" target="_blank" rel="noopener" class="px-5 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">⤓ Download (SAS)</a>` : ''}
+        ${canModifyEv(e) ? `
         <button onclick="deleteEv('${esc(e.id)}');closeEvModal()" class="px-5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">Delete</button>
-        <button onclick="editEv('${esc(e.id)}')" class="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-slate-200 font-bold text-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Edit</button>
+        <button onclick="editEv('${esc(e.id)}')" class="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-slate-200 font-bold text-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Edit</button>` : ''}
         <button onclick="closeEvModal()" class="px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm hover:opacity-90">Close</button>
       </div>
     </div>`;
@@ -1982,10 +1988,11 @@ function closeEvModal() { document.getElementById('ev-modal').classList.add('hid
 async function editEv(id) {
   const e = evidence.find(x => x.id === id);
   if (!e) return;
+  if (!canModifyEv(e)) { toast('⛔', 'You can only edit your own evidence.'); return; }
   const newTitle = prompt('Update title:', e.title);
   if (!newTitle || newTitle === e.title) return;
   if (EVIDENCE_UPDATE) {
-    try { await lcCall(EVIDENCE_UPDATE, { id, caseID: e.caseID, title: newTitle }); }
+    try { await lcCall(EVIDENCE_UPDATE, { id, caseID: e.caseID, title: newTitle, user: user?.email, role: user?.role }); }
     catch (_) {}
   }
   e.title = newTitle;
@@ -1995,13 +2002,15 @@ async function editEv(id) {
 }
 
 async function deleteEv(id) {
-  if (!confirm(`Delete evidence ${id}?`)) return;
   const e = evidence.find(x => x.id === id);
+  if (!e) return;
+  if (!canModifyEv(e)) { toast('⛔', 'You can only delete your own evidence.'); return; }
+  if (!confirm(`Delete evidence ${id}?`)) return;
   if (EVIDENCE_DELETE) {
-    try { await lcCall(EVIDENCE_DELETE, { id, caseID: e?.caseID }); }
+    try { await lcCall(EVIDENCE_DELETE, { id, caseID: e.caseID, user: user?.email, role: user?.role }); }
     catch (_) {}
   }
-  evidence = evidence.filter(e => e.id !== id);
+  evidence = evidence.filter(x => x.id !== id);
   addAuditEntry('DELETE', id);
   renderEvidence(evidence); renderDashboard();
   toast('🗑️', 'Evidence deleted');

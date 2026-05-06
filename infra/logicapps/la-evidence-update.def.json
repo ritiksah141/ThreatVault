@@ -16,20 +16,13 @@
         "schema": {
           "type": "object",
           "properties": {
-            "id": {
-              "type": "string"
-            },
-            "caseID": {
-              "type": "string"
-            },
-            "title": {
-              "type": "string"
-            }
+            "id": { "type": "string" },
+            "caseID": { "type": "string" },
+            "title": { "type": "string" },
+            "user": { "type": "string" },
+            "role": { "type": "string" }
           },
-          "required": [
-            "id",
-            "caseID"
-          ]
+          "required": ["id", "caseID"]
         }
       }
     }
@@ -50,81 +43,112 @@
         }
       }
     },
-    "Compose_updated": {
-      "type": "Compose",
+    "Check_permission": {
+      "type": "If",
       "runAfter": {
-        "Get_doc": [
-          "Succeeded"
+        "Get_doc": ["Succeeded"]
+      },
+      "expression": {
+        "or": [
+          {
+            "equals": [
+              "@{json(triggerBody())?['role']}",
+              "Admin"
+            ]
+          },
+          {
+            "equals": [
+              "@{body('Get_doc')?['uploadedBy']}",
+              "@{json(triggerBody())?['user']}"
+            ]
+          }
         ]
       },
-      "inputs": "@union(body('Get_doc'), json(concat('{\"title\":\"', coalesce(json(triggerBody())?['title'], body('Get_doc')?['title']), '\",\"updatedAt\":\"', utcNow(), '\"}')))"
-    },
-    "Replace_doc": {
-      "type": "ApiConnection",
-      "runAfter": {
-        "Compose_updated": [
-          "Succeeded"
-        ]
-      },
-      "inputs": {
-        "host": {
-          "connection": {
-            "name": "@parameters('$connections')['documentdb']['connectionId']"
+      "actions": {
+        "Compose_updated": {
+          "type": "Compose",
+          "inputs": "@union(body('Get_doc'), json(concat('{\"title\":\"', coalesce(json(triggerBody())?['title'], body('Get_doc')?['title']), '\",\"updatedAt\":\"', utcNow(), '\"}')))"
+        },
+        "Replace_doc": {
+          "type": "ApiConnection",
+          "runAfter": {
+            "Compose_updated": ["Succeeded"]
+          },
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['documentdb']['connectionId']"
+              }
+            },
+            "method": "put",
+            "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
+            "headers": {
+              "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['caseID']}"
+            },
+            "body": "@outputs('Compose_updated')"
           }
         },
-        "method": "put",
-        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('evidence')}/docs/@{encodeURIComponent(json(triggerBody())?['id'])}",
-        "headers": {
-          "x-ms-documentdb-partitionkey": "@{json(triggerBody())?['caseID']}"
-        },
-        "body": "@outputs('Compose_updated')"
-      }
-    },
-    "Audit_update": {
-      "type": "ApiConnection",
-      "runAfter": {
-        "Replace_doc": [
-          "Succeeded"
-        ]
-      },
-      "inputs": {
-        "host": {
-          "connection": {
-            "name": "@parameters('$connections')['documentdb']['connectionId']"
+        "Audit_update": {
+          "type": "ApiConnection",
+          "runAfter": {
+            "Replace_doc": ["Succeeded"]
+          },
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['documentdb']['connectionId']"
+              }
+            },
+            "method": "post",
+            "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
+            "headers": {
+              "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]"
+            },
+            "body": {
+              "id": "@{guid()}",
+              "action": "UPDATE",
+              "user": "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
+              "res": "@json(triggerBody())?['id']",
+              "ip": "—",
+              "ts": "@utcNow()"
+            }
           }
         },
-        "method": "post",
-        "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('threatvault')}/colls/@{encodeURIComponent('audit')}/docs",
-        "headers": {
-          "x-ms-documentdb-raw-partitionkey": "[\"@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}\"]"
-        },
-        "body": {
-          "id": "@{guid()}",
-          "action": "UPDATE",
-          "user": "@{coalesce(json(triggerBody())?['user'], 'analyst@threatvault.com')}",
-          "res": "@json(triggerBody())?['id']",
-          "ip": "\u2014",
-          "ts": "@utcNow()"
+        "Response": {
+          "type": "Response",
+          "kind": "Http",
+          "runAfter": {
+            "Audit_update": ["Succeeded", "Failed"]
+          },
+          "inputs": {
+            "statusCode": 200,
+            "headers": {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*"
+            },
+            "body": {
+              "evidence": "@outputs('Compose_updated')"
+            }
+          }
         }
-      }
-    },
-    "Response": {
-      "type": "Response",
-      "kind": "Http",
-      "runAfter": {
-        "Audit_update": [
-          "Succeeded",
-          "Failed"
-        ]
       },
-      "inputs": {
-        "statusCode": 200,
-        "headers": {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        },
-        "body": {
-          "evidence": "@outputs('Compose_updated')"
+      "else": {
+        "actions": {
+          "Forbidden": {
+            "type": "Response",
+            "kind": "Http",
+            "inputs": {
+              "statusCode": 403,
+              "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+              },
+              "body": {
+                "ok": false,
+                "error": "Forbidden: you can only edit your own evidence."
+              }
+            }
+          }
         }
       }
     }
