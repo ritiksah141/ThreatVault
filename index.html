@@ -151,6 +151,18 @@ html.dark .tv-input:focus { background: #263043; border-color: #475569; }
 .tv-input::placeholder { color: #9ca3af; }
 html.dark .tv-input::placeholder { color: #64748b; }
 
+/* Password eye toggle */
+.pwd-wrap { position: relative; }
+.pwd-wrap .tv-input { padding-right: 44px; }
+.pwd-eye {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; padding: 4px; line-height: 1;
+  color: #9ca3af; transition: color .15s;
+}
+.pwd-eye:hover { color: #374151; }
+html.dark .pwd-eye { color: #64748b; }
+html.dark .pwd-eye:hover { color: #e2e8f0; }
+
 select.tv-input { cursor: pointer; }
 html.dark select.tv-input option { background: #1e293b; }
 
@@ -390,7 +402,10 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
             <p id="l-email-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
           </div>
           <div>
-            <input id="l-pass" type="password" placeholder="Password" class="tv-input" autocomplete="current-password"/>
+            <div class="pwd-wrap">
+              <input id="l-pass" type="password" placeholder="Password" class="tv-input" autocomplete="current-password"/>
+              <button type="button" class="pwd-eye" onclick="togglePwd('l-pass',this)" tabindex="-1" aria-label="Show password"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+            </div>
             <p id="l-pass-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
           </div>
         </div>
@@ -412,11 +427,17 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
             <p id="r-email-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
           </div>
           <div>
-            <input id="r-pass" type="password" placeholder="Password (min 8 chars)" class="tv-input" autocomplete="new-password"/>
+            <div class="pwd-wrap">
+              <input id="r-pass" type="password" placeholder="Password (min 8 chars)" class="tv-input" autocomplete="new-password"/>
+              <button type="button" class="pwd-eye" onclick="togglePwd('r-pass',this)" tabindex="-1" aria-label="Show password"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+            </div>
             <p id="r-pass-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
           </div>
           <div>
-            <input id="r-pass2" type="password" placeholder="Confirm Password" class="tv-input" autocomplete="new-password"/>
+            <div class="pwd-wrap">
+              <input id="r-pass2" type="password" placeholder="Confirm Password" class="tv-input" autocomplete="new-password"/>
+              <button type="button" class="pwd-eye" onclick="togglePwd('r-pass2',this)" tabindex="-1" aria-label="Show password"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+            </div>
             <p id="r-pass2-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
           </div>
         </div>
@@ -792,6 +813,10 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
               <h3 class="font-black text-gray-900 dark:text-gray-100 mb-5 flex items-center gap-2">
                 <span class="material-symbols-outlined text-gray-400">badge</span> Profile
               </h3>
+              <div id="pf-admin-notice" class="hidden mb-4 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                <span class="material-symbols-outlined text-[16px] shrink-0">shield_lock</span>
+                Admin profile name and role are managed by the platform and cannot be edited here.
+              </div>
               <form class="space-y-3 text-sm" onsubmit="event.preventDefault();updateProfile()">
                 <div>
                   <label class="text-[10px] font-black uppercase tracking-wide text-gray-500 dark:text-slate-400 block mb-1 pl-1">Email (read-only)</label>
@@ -799,18 +824,18 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
                 </div>
                 <div>
                   <label class="text-[10px] font-black uppercase tracking-wide text-gray-500 dark:text-slate-400 block mb-1 pl-1">Display Name</label>
-                  <input id="pf-name" type="text" class="tv-input" placeholder="Full Name"/>
+                  <input id="pf-name" type="text" class="tv-input" placeholder="Full Name" oninput="checkProfileDirty()"/>
                   <p id="pf-name-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
                 </div>
                 <div>
                   <label class="text-[10px] font-black uppercase tracking-wide text-gray-500 dark:text-slate-400 block mb-1 pl-1">Role</label>
-                  <select id="pf-role" class="tv-input">
+                  <select id="pf-role" class="tv-input" onchange="checkProfileDirty()">
                     <option>Analyst</option><option>Senior Analyst</option><option>Investigator</option><option>Admin</option>
                   </select>
                 </div>
                 <div class="flex items-center justify-between pt-2">
                   <span class="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-black" id="prof-region">italynorth</span>
-                  <button type="submit" class="px-5 py-2.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90">Save Profile</button>
+                  <button id="pf-save-btn" type="submit" disabled class="px-5 py-2.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">Save Profile</button>
                 </div>
               </form>
             </div>
@@ -846,18 +871,27 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
               </h3>
               <form class="space-y-3" onsubmit="event.preventDefault();changePassword()">
                 <div>
-                  <input id="cp-cur" type="password" placeholder="Current Password" class="tv-input"/>
+                  <div class="pwd-wrap">
+                    <input id="cp-cur" type="password" placeholder="Current Password" class="tv-input" oninput="checkPwdFields()"/>
+                    <button type="button" class="pwd-eye" onclick="togglePwd('cp-cur',this)" tabindex="-1" aria-label="Show password"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+                  </div>
                   <p id="cp-cur-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
                 </div>
                 <div>
-                  <input id="cp-new" type="password" placeholder="New Password" class="tv-input"/>
+                  <div class="pwd-wrap">
+                    <input id="cp-new" type="password" placeholder="New Password" class="tv-input" oninput="checkPwdFields()"/>
+                    <button type="button" class="pwd-eye" onclick="togglePwd('cp-new',this)" tabindex="-1" aria-label="Show password"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+                  </div>
                   <p id="cp-new-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
                 </div>
                 <div>
-                  <input id="cp-new2" type="password" placeholder="Confirm New Password" class="tv-input"/>
+                  <div class="pwd-wrap">
+                    <input id="cp-new2" type="password" placeholder="Confirm New Password" class="tv-input" oninput="checkPwdFields()"/>
+                    <button type="button" class="pwd-eye" onclick="togglePwd('cp-new2',this)" tabindex="-1" aria-label="Show password"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+                  </div>
                   <p id="cp-new2-err" class="hidden field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1"></p>
                 </div>
-                <button type="submit" class="w-full py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90">Update Password</button>
+                <button id="cp-submit-btn" type="submit" disabled class="w-full py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">Update Password</button>
               </form>
             </div>
 
@@ -865,10 +899,14 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
               <h3 class="font-black text-red-600 dark:text-red-400 mb-3 flex items-center gap-2">
                 <span class="material-symbols-outlined">warning</span> Delete Account
               </h3>
+              <div id="del-admin-notice" class="hidden mb-4 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                <span class="material-symbols-outlined text-[16px] shrink-0">shield_lock</span>
+                Admin accounts cannot be deleted from this interface.
+              </div>
               <p class="text-xs text-gray-500 dark:text-slate-400 mb-4">
-                Permanently removes your local account and signs you out. This action cannot be undone.
+                Permanently removes your account and signs you out. This action cannot be undone.
               </p>
-              <button onclick="deleteAccount()" class="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm">Delete My Account</button>
+              <button id="del-account-btn" onclick="openDeleteModal()" class="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">Delete My Account</button>
             </div>
 
           </div>
@@ -941,6 +979,36 @@ html.dark input[type=range]::-webkit-slider-thumb { background: #e2e8f0; }
 <div id="toast" class="hidden fixed bottom-6 right-6 z-[200] flex items-center gap-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-full px-5 py-3.5 shadow-xl max-w-xs">
   <span id="t-icon" class="text-lg"></span>
   <span id="t-msg" class="text-sm font-bold text-gray-800 dark:text-gray-200"></span>
+</div>
+
+<!-- ─── DELETE ACCOUNT MODAL ─────────────────────────────────────────────── -->
+<div id="delete-modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4" onclick="if(event.target===this)closeDeleteModal()">
+  <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm p-7 shadow-2xl relative border border-red-200 dark:border-red-900/50">
+    <button onclick="closeDeleteModal()" class="modal-close absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex items-center justify-center">
+      <span class="material-symbols-outlined text-[18px]">close</span>
+    </button>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-red-500">delete_forever</span>
+      </div>
+      <div>
+        <h3 class="font-black text-red-600 dark:text-red-400">Delete Account</h3>
+        <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-0.5">This cannot be undone.</p>
+      </div>
+    </div>
+    <p class="text-sm text-gray-600 dark:text-slate-300 mb-1">You are about to permanently delete:</p>
+    <p id="del-email-display" class="text-sm font-black text-gray-900 dark:text-gray-100 mb-4 truncate"></p>
+    <label class="text-[10px] font-black uppercase tracking-wide text-gray-500 dark:text-slate-400 block mb-1.5 pl-1">Confirm your password</label>
+    <div class="pwd-wrap mb-1">
+      <input id="del-confirm-pass" type="password" placeholder="Current password" class="tv-input" oninput="document.getElementById('del-confirm-btn').disabled=!this.value.trim()"/>
+      <button type="button" class="pwd-eye" onclick="togglePwd('del-confirm-pass',this)" tabindex="-1" aria-label="Show password"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+    </div>
+    <p id="del-confirm-err" class="hidden text-xs font-bold text-red-600 dark:text-red-400 mb-3 pl-1"></p>
+    <div class="flex gap-3 mt-4">
+      <button onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-2xl border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 font-black text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">Cancel</button>
+      <button id="del-confirm-btn" disabled onclick="confirmDeleteAccount()" class="flex-1 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all">Delete Forever</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -2109,8 +2177,8 @@ async function runDashboardAnomaly() {
     return;
   }
   panel.classList.remove('hidden');
-  body.innerHTML = '<div class="text-gray-400 dark:text-slate-500">Scanning audit telemetry…</div>';
-  meta.textContent = '';
+  meta.textContent = 'Scanning…';
+  body.innerHTML = '<div class="text-gray-400 dark:text-slate-500 text-xs py-2">Scanning audit telemetry…</div>';
 
   let items = audit;
   let threshold = 5;
@@ -2124,29 +2192,112 @@ async function runDashboardAnomaly() {
 
   const cutoff = Date.now() - 60 * 60 * 1000;
   const counts = {};
+  const recentItems = [];
   for (const a of items) {
     const t = Date.parse(a.ts);
-    if (isFinite(t) && t < cutoff) continue;
-    counts[a.user] = (counts[a.user] || 0) + 1;
+    const inWindow = isFinite(t) && t >= cutoff;
+    if (inWindow) {
+      counts[a.user] = (counts[a.user] || 0) + 1;
+      recentItems.push(a);
+    }
   }
+  recentItems.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
   const rows = Object.entries(counts)
     .map(([user, count]) => ({ user, count, anomaly: count >= threshold }))
     .sort((a, b) => b.count - a.count);
 
-  meta.textContent = `${items.length} events · threshold ≥${threshold}/hr`;
-  if (!rows.length) {
-    body.innerHTML = '<div class="text-gray-400 dark:text-slate-500">No recent activity detected.</div>';
-    return;
-  }
+  const anomalyCount = rows.filter(r => r.anomaly).length;
+  const totalRecent  = recentItems.length;
+  meta.textContent   = `${items.length} total events · last 60 min`;
+
+  // ── Status banner ──
+  const bannerCls = anomalyCount
+    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/50'
+    : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700/50';
+  const bannerIcon  = anomalyCount ? 'crisis_alert' : 'verified_user';
+  const bannerIconC = anomalyCount ? 'text-red-500' : 'text-emerald-500';
+  const bannerTitle = anomalyCount
+    ? `${anomalyCount} anomal${anomalyCount > 1 ? 'ies' : 'y'} detected`
+    : 'No anomalies detected';
+  const bannerSub   = anomalyCount
+    ? `${anomalyCount} user${anomalyCount > 1 ? 's' : ''} exceeded ${threshold} actions/hr threshold`
+    : `All ${rows.length || 0} active user${rows.length !== 1 ? 's' : ''} are within normal bounds`;
+  const bannerTitleC = anomalyCount
+    ? 'text-red-700 dark:text-red-300'
+    : 'text-emerald-700 dark:text-emerald-300';
+  const bannerSubC   = anomalyCount
+    ? 'text-red-600/70 dark:text-red-400/70'
+    : 'text-emerald-600/70 dark:text-emerald-400/70';
+
+  // ── Activity bars ──
+  const maxCount = rows.length ? rows[0].count : 1;
+  const activityHtml = rows.length ? `
+    <div class="mb-4">
+      <p class="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-2">
+        User activity · last 60 min · threshold ≥${threshold}/hr
+      </p>
+      <div class="space-y-2">
+        ${rows.slice(0, 8).map(r => {
+          const pct = Math.min(100, Math.round((r.count / Math.max(maxCount, threshold)) * 100));
+          const barCls = r.anomaly
+            ? 'bg-red-500'
+            : r.count >= threshold * 0.8
+              ? 'bg-amber-400'
+              : 'bg-emerald-400';
+          const countCls = r.anomaly
+            ? 'text-red-600 dark:text-red-400'
+            : 'text-gray-500 dark:text-slate-400';
+          return `
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-[10px] text-gray-600 dark:text-slate-300 w-36 truncate shrink-0">${esc(r.user)}</span>
+            <div class="flex-1 bg-gray-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+              <div class="h-full ${barCls} rounded-full transition-all" style="width:${pct}%"></div>
+            </div>
+            <span class="text-[10px] font-black ${countCls} w-10 text-right shrink-0">${r.count}${r.anomaly ? ' ⚑' : ''}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : `<div class="mb-4 text-xs text-gray-400 dark:text-slate-500">No activity in the last 60 minutes.</div>`;
+
+  // ── Recent events ──
+  const ACT_COL = { CREATE:'emerald', DELETE:'red', UPDATE:'blue', LOGIN:'slate', LOGOUT:'slate', READ:'purple' };
+  const recentHtml = recentItems.length ? `
+    <div>
+      <p class="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-2">Recent events (last hour)</p>
+      <div class="space-y-1">
+        ${recentItems.slice(0, 5).map(a => {
+          const col = ACT_COL[a.action] || 'slate';
+          const ago = (() => {
+            const s = Math.max(0, Math.round((Date.now() - new Date(a.ts)) / 1000));
+            if (s < 60) return `${s}s ago`;
+            if (s < 3600) return `${Math.floor(s/60)}m ago`;
+            return `${Math.floor(s/3600)}h ago`;
+          })();
+          return `
+          <div class="flex items-center gap-2 rounded-lg px-2 py-1.5 bg-gray-50 dark:bg-slate-700/40">
+            <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-${col}-100 dark:bg-${col}-900/30 text-${col}-700 dark:text-${col}-300 shrink-0">${esc(a.action)}</span>
+            <span class="font-mono text-[10px] text-gray-500 dark:text-slate-400 truncate flex-1">${esc(a.res || '—')}</span>
+            <span class="text-[10px] font-semibold text-gray-400 dark:text-slate-500 shrink-0">${esc(a.user?.split('@')[0] || a.user)}</span>
+            <span class="text-[9px] text-gray-300 dark:text-slate-600 shrink-0">${ago}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      ${recentItems.length > 5 ? `<button onclick="showPage('audit',null)" class="mt-2 text-[10px] font-black text-blue-600 dark:text-blue-400 hover:underline">View all ${totalRecent} events →</button>` : ''}
+    </div>` : '';
+
   body.innerHTML = `
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-      ${rows.slice(0, 12).map(r => `
-        <div class="flex items-center justify-between rounded-xl px-3 py-2 ${r.anomaly ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50' : 'bg-gray-50 dark:bg-slate-700/40'}">
-          <span class="font-mono text-[11px] truncate">${esc(r.user)}</span>
-          <span class="text-xs font-black ${r.anomaly ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-slate-400'}">${r.count}${r.anomaly ? ' ⚑' : ''}</span>
-        </div>`).join('')}
-    </div>`;
-  if (window.__tvTrack) window.__tvTrack('Dashboard.AnomalyScan', { events: items.length, anomalies: rows.filter(r => r.anomaly).length });
+    <div class="flex items-start gap-3 p-3 rounded-xl border ${bannerCls} mb-4">
+      <span class="material-symbols-outlined ${bannerIconC} text-[22px] shrink-0 mt-0.5">${bannerIcon}</span>
+      <div>
+        <p class="text-sm font-black ${bannerTitleC}">${bannerTitle}</p>
+        <p class="text-[10px] font-semibold ${bannerSubC} mt-0.5">${bannerSub}</p>
+      </div>
+    </div>
+    ${activityHtml}
+    ${recentHtml}`;
+
+  if (window.__tvTrack) window.__tvTrack('Dashboard.AnomalyScan', { events: items.length, anomalies: anomalyCount });
 }
 
 async function runPreFileAI(file) {
@@ -2283,61 +2434,159 @@ function renderSettingsPage() {
   const reg = document.getElementById('prof-region'); if (reg) reg.textContent = REGION;
   const cfg = document.getElementById('cfg-region');  if (cfg) cfg.textContent = REGION;
   const idp = document.getElementById('cfg-idp');     if (idp) idp.textContent = AUTH_LIVE ? 'Logic Apps Auth' : 'Local Auth';
+
+  const adminUser = isAdmin();
+
+  // Profile fields — locked for admin
+  const pfName = document.getElementById('pf-name');
+  const pfRole = document.getElementById('pf-role');
+  const pfSave = document.getElementById('pf-save-btn');
+  const pfNotice = document.getElementById('pf-admin-notice');
+  if (pfName)   { pfName.disabled   = adminUser; pfName.classList.toggle('opacity-60', adminUser); pfName.classList.toggle('cursor-not-allowed', adminUser); }
+  if (pfRole)   { pfRole.disabled   = adminUser; pfRole.classList.toggle('opacity-60', adminUser); pfRole.classList.toggle('cursor-not-allowed', adminUser); }
+  if (pfSave)   pfSave.disabled = true;
+  if (pfNotice) pfNotice.classList.toggle('hidden', !adminUser);
+
+  // Delete button — blocked for admin
+  const delBtn    = document.getElementById('del-account-btn');
+  const delNotice = document.getElementById('del-admin-notice');
+  if (delBtn)    { delBtn.disabled = adminUser; }
+  if (delNotice) delNotice.classList.toggle('hidden', !adminUser);
+
+  // Reset password button state
+  checkPwdFields();
+}
+
+function togglePwd(id, btn) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  const icon = btn.querySelector('.material-symbols-outlined');
+  if (icon) icon.textContent = show ? 'visibility_off' : 'visibility';
+}
+
+function checkProfileDirty() {
+  const btn = document.getElementById('pf-save-btn');
+  if (!btn || isAdmin()) return;
+  const nameChanged = (document.getElementById('pf-name')?.value || '').trim() !== (user?.name || '');
+  const roleChanged = (document.getElementById('pf-role')?.value || '') !== (user?.role || 'Analyst');
+  btn.disabled = !(nameChanged || roleChanged);
+}
+
+function checkPwdFields() {
+  const btn  = document.getElementById('cp-submit-btn');
+  if (!btn) return;
+  const cur  = document.getElementById('cp-cur')?.value  || '';
+  const np   = document.getElementById('cp-new')?.value  || '';
+  const np2  = document.getElementById('cp-new2')?.value || '';
+
+  // New password length — only show error once the user has typed something
+  const newErr = document.getElementById('cp-new-err');
+  if (newErr) {
+    if (np && np.length < MIN_PASS) {
+      newErr.textContent = `Must be at least ${MIN_PASS} characters (${np.length}/${MIN_PASS})`;
+      newErr.className = 'field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1';
+    } else {
+      newErr.textContent = '';
+      newErr.className = 'hidden field-err';
+    }
+  }
+
+  // Confirm match — only show once both fields have content
+  const matchErr = document.getElementById('cp-new2-err');
+  if (matchErr) {
+    if (np && np2 && np !== np2) {
+      matchErr.textContent = 'Passwords do not match';
+      matchErr.className = 'field-err text-xs font-bold text-red-600 dark:text-red-400 mt-1 pl-1';
+    } else if (np && np2 && np === np2) {
+      matchErr.textContent = '✓ Passwords match';
+      matchErr.className = 'field-err text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1 pl-1';
+    } else {
+      matchErr.textContent = '';
+      matchErr.className = 'hidden field-err';
+    }
+  }
+
+  const valid = cur.length > 0 && np.length >= MIN_PASS && np === np2;
+  btn.disabled = !valid;
 }
 
 async function changePassword() {
-  const cur  = document.getElementById('cp-cur').value;
-  const np   = document.getElementById('cp-new').value;
-  const np2  = document.getElementById('cp-new2').value;
-
-  clearFieldErrs('cp-cur-err','cp-new-err','cp-new2-err');
-  let bad = false;
-  if (!cur)               { showFieldErr('cp-cur-err','Enter current password.'); bad = true; }
-  if (np.length < MIN_PASS) { showFieldErr('cp-new-err',`Must be at least ${MIN_PASS} characters.`); bad = true; }
-  if (np !== np2)           { showFieldErr('cp-new2-err','Passwords do not match.'); bad = true; }
-  if (bad) return;
+  const cur = document.getElementById('cp-cur').value;
+  const np  = document.getElementById('cp-new').value;
 
   if (!AUTH_PASSWORD || !user?.email) {
     showFieldErr('cp-cur-err','Password service is not configured.');
     return;
   }
+  const btn = document.getElementById('cp-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
   try {
     const currentHash = await hashPwd(user.email, cur);
     const newHash     = await hashPwd(user.email, np);
     const r = await lcCall(AUTH_PASSWORD, { email: user.email, currentHash, newHash });
     if (r && r.ok) {
       ['cp-cur','cp-new','cp-new2'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+      checkPwdFields();
       toast('✅', 'Password changed');
       return;
     }
-    showFieldErr('cp-cur-err', (r && r.error) || 'Could not update password.');
+    showFieldErr('cp-cur-err', (r && r.error) || 'Incorrect current password.');
   } catch (_) {
     showFieldErr('cp-cur-err','Auth service unreachable.');
+  } finally {
+    const b = document.getElementById('cp-submit-btn');
+    if (b) { b.textContent = 'Update Password'; checkPwdFields(); }
   }
 }
 
-async function deleteAccount() {
-  if (!user?.email) return;
-  const pass = prompt(`Confirm your password to permanently delete ${user.email}:`);
-  if (!pass) return;
-  const email = user.email;
+function openDeleteModal() {
+  if (!user?.email || isAdmin()) return;
+  const disp = document.getElementById('del-email-display');
+  if (disp) disp.textContent = user.email;
+  const pass = document.getElementById('del-confirm-pass');
+  if (pass) pass.value = '';
+  const err = document.getElementById('del-confirm-err');
+  if (err) err.classList.add('hidden');
+  const btn = document.getElementById('del-confirm-btn');
+  if (btn) btn.disabled = true;
+  document.getElementById('delete-modal').classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-modal').classList.add('hidden');
+}
+
+async function confirmDeleteAccount() {
+  const pass  = (document.getElementById('del-confirm-pass')?.value || '').trim();
+  const err   = document.getElementById('del-confirm-err');
+  const btn   = document.getElementById('del-confirm-btn');
+  if (!pass || !user?.email) return;
+
+  if (err) err.classList.add('hidden');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
 
   if (!AUTH_DELETE) {
-    toast('❌', 'Account deletion service is not configured.', 'error');
+    if (err) { err.textContent = 'Account deletion service is not configured.'; err.classList.remove('hidden'); }
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete Forever'; }
     return;
   }
   try {
-    const passwordHash = await hashPwd(email, pass);
-    const r = await lcCall(AUTH_DELETE, { email, passwordHash });
+    const passwordHash = await hashPwd(user.email, pass);
+    const r = await lcCall(AUTH_DELETE, { email: user.email, passwordHash });
     if (!r || !r.ok) {
-      toast('❌', (r && r.error) || 'Account deletion failed', 'error');
+      if (err) { err.textContent = (r && r.error) || 'Incorrect password or deletion failed.'; err.classList.remove('hidden'); }
+      if (btn) { btn.disabled = false; btn.textContent = 'Delete Forever'; }
       return;
     }
   } catch (_) {
-    toast('❌', 'Auth service unreachable.', 'error');
+    if (err) { err.textContent = 'Auth service unreachable.'; err.classList.remove('hidden'); }
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete Forever'; }
     return;
   }
 
+  closeDeleteModal();
   toast('🗑️', 'Account deleted');
   setTimeout(() => doLogout(), 600);
 }
