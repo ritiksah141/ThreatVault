@@ -29,7 +29,9 @@ window.__TV_CONFIG__ = {
   "authProfile": "https://prod-21.italynorth.logic.azure.com:443/workflows/981a11069173439a9ae40e2ec7989758/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=NnXcAQlXXDv-hM1e1d5qn8-fUPEbg8XoJ25jTDIBPgc",
   "authDelete": "https://prod-18.italynorth.logic.azure.com:443/workflows/03f65c6b665e499fb96966f092746fbc/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=f9GBeZsiBgB0b56nEEIzAOL9Pcidu2KyKDRymbe7XCc",
   "evidenceModerate": "https://prod-08.italynorth.logic.azure.com:443/workflows/6567df3529284777bf46ab7f18543573/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=O5sJyjO33bx6HQxpu74_WUhTGg0MioHut2mwIGt9WO8",
-  "auditAnomaly": "https://prod-23.italynorth.logic.azure.com:443/workflows/99f062f4f1674ef2b72e4d4bcd3390b6/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=VYAHp_2EFISSMlIB_g2AfF067ryuM0xOhHsW_Br6b_g"
+  "auditAnomaly": "https://prod-23.italynorth.logic.azure.com:443/workflows/99f062f4f1674ef2b72e4d4bcd3390b6/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=VYAHp_2EFISSMlIB_g2AfF067ryuM0xOhHsW_Br6b_g",
+  "iocList": "https://prod-21.italynorth.logic.azure.com:443/workflows/5652cd2f2f1949ac967ad5dba61a6287/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=CxaWBKk_Mnw8G4z8YyjkT8-Wfbyx1Xp129GX_ntvoqY",
+  "iocCreate": "https://prod-11.italynorth.logic.azure.com:443/workflows/248636509ce4483780498b74741d5715/triggers/manual/paths/invoke?api-version=2019-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=opQxMJ6fkRxhA8UMowXA_sZkjWydLosjMABhkh4-0yo"
 },
   swa:        { host: "sttv5fb957.z38.web.core.windows.net" }
 };

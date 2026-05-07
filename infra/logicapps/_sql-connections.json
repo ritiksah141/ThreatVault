@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location":  { "type": "string" },
+    "sqlServer": { "type": "string" },
+    "sqlDb":     { "type": "string" },
+    "sqlUser":   { "type": "string" },
+    "sqlPass":   { "type": "securestring" },
+    "connSql":   { "type": "string", "defaultValue": "conn-sql" }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/connections",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('connSql')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "displayName": "[parameters('connSql')]",
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/sql')]"
+        },
+        "parameterValues": {
+          "server":   "[parameters('sqlServer')]",
+          "database": "[parameters('sqlDb')]",
+          "username": "[parameters('sqlUser')]",
+          "password": "[parameters('sqlPass')]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "sqlConnId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Web/connections', parameters('connSql'))]"
+    }
+  }
+}

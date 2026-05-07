@@ -1,0 +1,56 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": { "type": "Object", "defaultValue": {} }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "ioc_type": { "type": "string" },
+            "severity":  { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "actions": {
+    "Execute_query": {
+      "type": "ApiConnection",
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['sql']['connectionId']"
+          }
+        },
+        "method": "post",
+        "path": "/datasets/default/query/sql",
+        "body": {
+          "query": "SELECT TOP 100 id, ioc_type, ioc_value, severity, [source], [description], CONVERT(varchar(30), created_at, 127) AS created_at FROM dbo.threat_intel ORDER BY created_at DESC"
+        }
+      }
+    },
+    "Response": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": { "Execute_query": ["Succeeded"] },
+      "inputs": {
+        "statusCode": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": {
+          "items": "@coalesce(body('Execute_query')?['ResultSets']?['Table1'], json('[]'))"
+        }
+      }
+    }
+  },
+  "outputs": {}
+}

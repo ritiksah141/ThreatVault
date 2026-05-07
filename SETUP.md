@@ -13,11 +13,13 @@ Working directory: `/Users/ritiksah/ThreatVault`
 - Repo cloned to `~/ThreatVault`
 - `infra/*.sh` are executable (`chmod +x` already applied)
 - `staticwebapp.config.json`, `.github/workflows/azure-static-web-apps.yml`, `README.md`, `SETUP.md` all written
-- **17** Logic App workflow definitions in `infra/logicapps/`
-  (5 evidence incl. moderate · 4 cases · 3 audit incl. anomaly · **5 auth**)
+- **17** NoSQL Logic App workflow definitions in `infra/logicapps/`
+  (5 evidence incl. moderate · 4 cases · 3 audit incl. anomaly · 5 auth)
+- **2** SQL Logic App definitions: `la-ioc-list.def.json`, `la-ioc-create.def.json`
+- ARM templates: `_connections.json`, `_template.json`, `_sql-connections.json`, `_sql-template.json`
 - `git remote origin` points at GitHub
 
-You have on disk: `az 2.84.0`, `jq 1.7.1`, `gh`, `git`, `python3`. Good to go.
+You have on disk: `az 2.84.0`, `jq 1.7.1`, `gh`, `git`, `python3`, `sqlcmd`. Good to go.
 
 ---
 
@@ -42,7 +44,7 @@ az account set --subscription "<SUBSCRIPTION_NAME_OR_ID>"
 
 ---
 
-## 2. Run the master deploy script
+## 2. Run the master deploy script (NoSQL + Blob + Auth + AI)
 
 The suffix is pinned in `infra/.state.suffix` (e.g. `tv5fb957`) so re-running
 **reuses** existing storage / cosmos / static-website resources rather than
@@ -101,10 +103,44 @@ ls infra/.state.*           # endpoints.json, monitor, swa, suffix, conn.json, .
 
 ---
 
-## 3. Confirm all 17 Logic App URLs were captured
+## 3. Deploy Azure SQL + IOC Logic Apps
+
+This step adds the SQL layer (CW1 requirement) without touching any existing resources.
 
 ```bash
-jq '. | keys | length' infra/.state.endpoints.json   # → 17
+bash infra/10-sql.sh            # creates sql-tv5fb957, database threatvault, dbo.threat_intel
+bash infra/11-sql-logicapps.sh  # deploys conn-sql + la-ioc-list + la-ioc-create; regenerates config.js
+```
+
+`10-sql.sh` will use `sqlcmd` to create the table automatically if it is
+installed. If `sqlcmd` is not available, it prints instructions to run
+`infra/sql/init.sql` in the Azure Portal Query Editor instead.
+
+**Firewall note:** if `sqlcmd` reports a client IP not allowed, add your
+IP to the SQL Server firewall:
+
+```bash
+MY_IP=$(curl -s https://api.ipify.org)
+az sql server firewall-rule create \
+  -g rg-threatvault --server sql-tv5fb957 \
+  -n AllowLocalDev \
+  --start-ip-address "$MY_IP" --end-ip-address "$MY_IP"
+# wait ~10 s then retry: sqlcmd -S sql-tv5fb957.database.windows.net ...
+```
+
+**Verify:**
+
+```bash
+jq '. | keys | length' infra/.state.endpoints.json   # → 19
+jq '{ iocList, iocCreate }' infra/.state.endpoints.json
+```
+
+---
+
+## 4. Confirm all 19 Logic App URLs were captured
+
+```bash
+jq '. | keys | length' infra/.state.endpoints.json   # → 19
 jq '. | keys' infra/.state.endpoints.json
 ```
 
@@ -115,28 +151,31 @@ Expected (order may differ):
   "auditAnomaly", "auditCreate", "auditList",
   "authDelete", "authLogin", "authPassword", "authProfile", "authRegister",
   "casesCreate", "casesDelete", "casesList", "casesUpdate",
-  "evidenceCreate", "evidenceDelete", "evidenceList", "evidenceModerate", "evidenceUpdate"
+  "evidenceCreate", "evidenceDelete", "evidenceList", "evidenceModerate", "evidenceUpdate",
+  "iocCreate", "iocList"
 ]
 ```
 
-If a key is missing → re-run `bash infra/05-logicapps.sh && bash infra/07-write-config.sh`.
+If a NoSQL key is missing → re-run `bash infra/05-logicapps.sh && bash infra/07-write-config.sh`.  
+If `iocList` / `iocCreate` are missing → re-run `bash infra/11-sql-logicapps.sh`.
 
 ---
 
-## 4. Confirm `config.js` was generated with live URLs
+## 5. Confirm `config.js` was generated with live URLs
 
 ```bash
-grep -E '"authLogin"|"authRegister"|"authPassword"|"authProfile"|"authDelete"' config.js | wc -l
-# → 5
+grep -E '"authLogin"|"authRegister"|"iocList"|"iocCreate"' config.js | wc -l
+# → 4
 ```
 
 You should see real `https://prod-...italynorth.logic.azure.com:443/...` URLs in
 the `endpoints` block. If they're empty strings or the count is wrong, re-run
-`bash infra/07-write-config.sh`.
+`bash infra/07-write-config.sh` (for NoSQL) or `bash infra/11-sql-logicapps.sh`
+(for SQL).
 
 ---
 
-## 5. Automated GitHub Setup
+## 6. Automated GitHub Setup
 
 `bash infra/08-setup-gh-secrets.sh` (run as part of `deploy-all.sh`)
 automatically pushes the following secrets to your GitHub repo:
@@ -151,19 +190,25 @@ Open https://github.com/ritiksah141/ThreatVault/settings/secrets/actions
 
 ---
 
-## 6. Commit and push everything
+## 7. Commit and push everything
 
 ```bash
 cd ~/ThreatVault
-git add -A
+git add config.js \
+        infra/10-sql.sh infra/11-sql-logicapps.sh \
+        infra/logicapps/_sql-connections.json \
+        infra/logicapps/_sql-template.json \
+        infra/logicapps/la-ioc-list.def.json \
+        infra/logicapps/la-ioc-create.def.json \
+        infra/sql/init.sql
 git status                                   # sanity-check what is staged
-git commit -m "ThreatVault CW2: live auth Logic Apps + landing page"
+git commit -m "feat: Add Azure SQL threat_intel table + IOC Logic Apps"
 git push origin main
 ```
 
 ---
 
-## 7. Watch the GitHub Actions run
+## 8. Watch the GitHub Actions run
 
 ```bash
 gh run watch
@@ -178,7 +223,7 @@ If it fails → check the logs in the **Upload to Blob Storage** step.
 
 ---
 
-## 8. Open the deployed site
+## 9. Open the deployed site
 
 ```bash
 open "https://$(grep '^SWA_HOST=' infra/.state.swa | cut -d= -f2-)"
@@ -189,7 +234,7 @@ You should see the **landing page** (hero + feature cards). Hard-refresh
 
 ---
 
-## 9. Smoke-test in the browser (this is also your record-rehearsal)
+## 10. Smoke-test in the browser (this is also your record-rehearsal)
 
 The app is **purely live**. Two demo accounts are pre-seeded (password
 `ThreatVault1!` for both):
@@ -200,11 +245,9 @@ The app is **purely live**. Two demo accounts are pre-seeded (password
 | `admin@threatvault.com`   | Ritik Sah  | Admin |
 
 You can sign in with either, or click **Get started** to register a third
-account. The seeded data includes 4 cases, 8 evidence (one Content-Safety-flagged),
-and ~50 audit entries (with a deliberate burst by `analyst@…` in the last 60
-minutes so the anomaly scan lights up).
+account.
 
-### 9.1 — Register + Login (auth Logic Apps)
+### 10.1 — Register + Login (auth Logic Apps)
 
 1. Landing → **Get started** → fill name, email, password (≥ 8 chars).
 2. After register success, sign in with the same credentials.
@@ -213,7 +256,7 @@ minutes so the anomaly scan lights up).
 new doc, partitioned by `/email`, with SHA-256 `passwordHash`.
 Audit `audit` container has an `ACCOUNT_REGISTER` row.
 
-### 9.2 — Cases (Cosmos CRUD)
+### 10.2 — Cases (Cosmos CRUD)
 
 1. Cases tab → New case → title `Demo Case A`, severity High → Save.
 2. Open the case, change severity → Save.
@@ -221,7 +264,7 @@ Audit `audit` container has an `ACCOUNT_REGISTER` row.
 
 **Verify in Azure**: Cosmos `cases` container → see the doc.
 
-### 9.3 — Evidence (Cosmos + Blob CRUD)
+### 10.3 — Evidence (Cosmos + Blob CRUD)
 
 1. Evidence tab → New evidence linked to `Demo Case A`. Description + a small
    file or text — SHA-256 is computed in-browser. Save.
@@ -232,7 +275,7 @@ Audit `audit` container has an `ACCOUNT_REGISTER` row.
 * Cosmos `evidence` container → doc with the SHA-256 hash, `caseID` partition.
 * Storage account → container `evidence` → uploaded media + JSON manifest.
 
-### 9.4 — Profile + password (more auth Logic Apps)
+### 10.4 — Profile + password (more auth Logic Apps)
 
 1. Settings → **Profile** card → change display name + role → Save.
 2. Settings → **Password** card → change password (verify with current).
@@ -241,27 +284,38 @@ Audit `audit` container has an `ACCOUNT_REGISTER` row.
 * `users` doc reflects the new name/role/passwordHash.
 * `audit` container has `PROFILE_UPDATE` and `PASSWORD_CHANGE` rows.
 
-### 9.5 — Audit (Cosmos) + Anomaly Scan
+### 10.5 — Audit (Cosmos) + Anomaly Scan
 
 Open the **Audit** tab. You should see entries for `LOGIN`, `CREATE`,
 `UPDATE`, `DELETE`, `PROFILE_UPDATE`, etc. Click **Anomaly Scan** — any user
 with ≥ 5 actions in the last 60 minutes gets red-highlighted (the seeded
 `analyst@threatvault.com` already qualifies).
 
-### 9.6 — Content Safety auto-flag
+### 10.6 — Content Safety auto-flag
 
 Submit a new evidence item whose **notes** contain abusive/violent text.
 Within ~1 s the card flips to a red **FLAGGED** badge — `la-evidence-moderate`
 called Content Safety, the response surfaced severity ≥ 4, and the workflow
 patched `flagged:true` + `contentModeratorStatus:rejected` onto the Cosmos doc.
 
-### 9.7 — SAS download
+### 10.7 — SAS download
 
 Open any evidence card → **Download (SAS)**. The browser hits Blob Storage
 directly using the read-only SAS in `config.js → storage.evidenceSas`
 (account-key signed at deploy time, 90-day expiry, `sp=r&spr=https`).
 
-### 9.8 — Application Insights
+### 10.8 — Threat Intel / SQL layer (CW1)
+
+Verify the SQL database directly in the Azure Portal:
+
+1. Portal → **SQL databases** → `threatvault (sql-tv5fb957)` → **Query editor (preview)**
+2. Login: user `tvadmin`, password `Tv@tv5fb957Azure1!`
+3. Run: `SELECT * FROM dbo.threat_intel ORDER BY created_at DESC`
+
+This demonstrates the SQL relational layer (fixed schema, `IDENTITY` PK,
+`DATETIME2` default) running alongside the Cosmos NoSQL layer.
+
+### 10.9 — Application Insights
 
 1. Portal → `appi-threatvault` → **Live Metrics** (keep open).
 2. In the SPA, click around / refresh.
@@ -271,7 +325,7 @@ directly using the read-only SAS in `config.js → storage.evidenceSas`
 
 ---
 
-## 10. Record the vodcast (≈5 min)
+## 11. Record the vodcast (≈5 min)
 
 Record on macOS with `Cmd+Shift+5` → **Record Entire Screen** (or use OBS/Loom).
 Speak over each step.
@@ -290,28 +344,26 @@ Pre-stage these tabs/windows before pressing record:
 | 0:00 | Show landing page, click **Get started** | "ThreatVault is hosted on Azure Storage's static-website endpoint. The frontend ships via GitHub Actions on every push to main." |
 | 0:20 | Register a fresh user → land on dashboard | "Registration calls `la-auth-register`, which inserts a SHA-256-hashed user into Cosmos and writes an audit row." |
 | 0:50 | Portal → Cosmos → `users` → show new doc | "Partitioned by `/email`, never stores plaintext." |
-| 1:15 | Portal → RG view | "Resource group `rg-threatvault` in **Italy North**: storage, Cosmos DB, App Insights, Log Analytics, Key Vault, **17** Logic Apps, **Azure AI Content Safety**, and the Storage static-website host." |
+| 1:15 | Portal → RG view | "Resource group `rg-threatvault` in **Italy North**: storage, Cosmos DB, App Insights, Log Analytics, Key Vault, **19** Logic Apps, Azure AI Content Safety, and the Azure SQL Server." |
 | 1:45 | SPA — create case `Demo Case A` | "`la-cases-create` writes to Cosmos `cases` partitioned by `/id`." |
 | 2:05 | Portal → Cosmos → `cases` → show doc | "The doc that just appeared." |
-| 2:25 | SPA — submit evidence linked to that case | "Evidence is hashed in-browser, the file goes to Blob, and metadata to Cosmos." |
+| 2:25 | SPA — submit evidence linked to that case | "Evidence is hashed in-browser, the file goes to Blob, metadata to Cosmos." |
 | 2:40 | SPA — submit a second evidence with abusive notes | "Content Safety auto-flags it — red `FLAGGED` badge, no manual review." |
 | 2:50 | SPA — click **Download (SAS)** on an evidence card | "Read-only SAS, 90-day expiry, account key never touches the browser." |
-| 2:55 | Portal → Storage → `evidence` container → blob | "Blob payload + manifest." |
-| 3:10 | Portal → Cosmos → `evidence` → doc | "Cosmos metadata, `/caseID` partition; flagged doc shows `contentModeratorStatus:rejected`." |
+| 3:05 | Portal → SQL database → Query Editor → `SELECT * FROM dbo.threat_intel` | "This is the SQL layer — structured IOC records in a relational table alongside the Cosmos NoSQL documents. CW1: both SQL and NoSQL in one application." |
 | 3:25 | SPA — Audit tab → click **Anomaly Scan** | "Threshold-based scan over the last 60 min — burst behaviour lights up red." |
 | 3:45 | Settings → change display name | "`la-auth-profile` updates the `users` doc and emits `PROFILE_UPDATE`." |
 | 4:00 | Portal → App Insights → Live Metrics, refresh SPA | "Application Insights — auto pageviews + custom events for auth/evidence/case actions." |
 | 4:20 | Portal → Key Vault → Secrets list | "Cosmos and Storage keys live in Key Vault, never in the repo." |
 | 4:35 | Terminal: small edit, commit, push | "Push to main triggers GitHub Actions…" |
 | 4:50 | GitHub → Actions → green run | "…which deploys the frontend automatically." |
-| 4:55 | SPA — hard-refresh, show the change | "Change is live." |
-| 5:00 | End | "ThreatVault: COM682 CW2." |
+| 4:55 | End | "ThreatVault: COM682 CW1 + CW2." |
 
 **Stop recording**, save as `ThreatVault-CW2-walkthrough.mp4`.
 
 ---
 
-## 11. (Optional) Tear down to save credit
+## 12. (Optional) Tear down to save credit
 
 ```bash
 bash infra/teardown.sh
@@ -328,13 +380,15 @@ bash infra/teardown.sh
 | `Location 'italynorth' not available` | Edit `infra/parameters.sh` → `LOCATION=westeurope`, then re-run step 2 |
 | Logic App returns 500 / `BadRequest` | Open the run history in Portal — usually a missing field in the JSON payload |
 | Browser console: CORS preflight error | Don't change `Content-Type` away from `text/plain` in `lcCall()` |
-| `config.js` endpoints are blank or count ≠ 17 | Re-run `bash infra/05-logicapps.sh && bash infra/07-write-config.sh` |
+| `config.js` endpoints count ≠ 19 | Re-run `bash infra/05-logicapps.sh && bash infra/11-sql-logicapps.sh` |
 | `evidenceModerate` returns `Content Safety call failed` | `bash infra/09-ai.sh && bash infra/05-logicapps.sh` (the moderate workflow needs the CS endpoint substituted at deploy time) |
 | Download (SAS) button missing or 403 | `config.js → storage.evidenceSas` is empty/expired — re-run `bash infra/01-storage.sh && bash infra/07-write-config.sh` |
 | Login page says "Auth service is not configured" | `config.js` is missing `authLogin` / `authRegister` — re-run step 07 |
 | GitHub Action fails (auth) | Re-run `bash infra/08-setup-gh-secrets.sh` to refresh credentials |
 | Site shows old version after push | Wait 30s; hard-refresh (`Cmd+Shift+R`) |
-| Service Pulse shows OFFLINE on a row | Click the row to retry; if persistent, open the Logic App run history |
+| `sqlcmd` client IP not allowed | `az sql server firewall-rule create -g rg-threatvault --server sql-tv5fb957 -n AllowLocalDev --start-ip-address <YOUR_IP> --end-ip-address <YOUR_IP>` |
+| `iocList` / `iocCreate` missing from config.js | Re-run `bash infra/11-sql-logicapps.sh` |
+| SQL Query Editor 403 in Portal | Ensure the Azure services firewall rule (0.0.0.0–0.0.0.0) exists on `sql-tv5fb957` |
 | Duplicate Azure resources after re-deploy | `cat infra/.state.suffix` — must be the original suffix; if missing, restore it before re-running |
 
 That's it — deploy, test, record, submit.

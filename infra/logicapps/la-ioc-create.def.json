@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": { "type": "Object", "defaultValue": {} }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "method": "POST",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "ioc_type":    { "type": "string" },
+            "ioc_value":   { "type": "string" },
+            "severity":    { "type": "string" },
+            "source":      { "type": "string" },
+            "description": { "type": "string" }
+          },
+          "required": ["ioc_type", "ioc_value"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Insert_row": {
+      "type": "ApiConnection",
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['sql']['connectionId']"
+          }
+        },
+        "method": "post",
+        "path": "/datasets/default/tables/@{encodeURIComponent('dbo.threat_intel')}/items",
+        "body": {
+          "ioc_type":    "@triggerBody()?['ioc_type']",
+          "ioc_value":   "@triggerBody()?['ioc_value']",
+          "severity":    "@coalesce(triggerBody()?['severity'], 'Medium')",
+          "source":      "@triggerBody()?['source']",
+          "description": "@triggerBody()?['description']"
+        }
+      }
+    },
+    "Response": {
+      "type": "Response",
+      "kind": "Http",
+      "runAfter": { "Insert_row": ["Succeeded"] },
+      "inputs": {
+        "statusCode": 201,
+        "headers": {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        "body": {
+          "ioc": "@body('Insert_row')"
+        }
+      }
+    }
+  },
+  "outputs": {}
+}
