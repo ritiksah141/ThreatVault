@@ -3,6 +3,9 @@ name: Deploy ThreatVault Frontend to Azure Storage
 on:
   push:
     branches: [main]
+    paths:
+      - "index.html"
+      - "config.js"
 
 jobs:
   deploy:
